@@ -23,6 +23,7 @@ window.PLAYGROUND_CONFIG = {
      * ดู mock data ตัวอย่างได้ใน docs/ หรือ test ด้วย zone:
      *   - homepage-hero
      *   - article-inline
+     *   - product-list-bento
      */
     baseUrl: 'https://ads-n-content.free.beeceptor.com',
 

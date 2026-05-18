@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import axios from 'axios'
-import type { IAdsConfig, IAdsEvent } from '@/types/ads'
+import type { IAdsConfig, IAdsEvent, BentoItem } from '@/types/ads'
 
 export interface UseAdsApiOptions {
     baseUrl?: string
@@ -15,8 +15,26 @@ export function useAdsApi({ baseUrl = '', clientId = '', zoneId = '' }: UseAdsAp
         const res = await axios.get(`${baseUrl}/ads/v1/zones/${zoneId}/config`, {
             params: { client_id: clientId },
         })
-        config.value = res.data
-        return res.data
+        const data = res.data
+
+        // bento zone ส่ง BentoItem[] มาโดยตรง — normalize ให้เข้ากับ slots format
+        if (Array.isArray(data)) {
+            return {
+                zoneId,
+                slots: [
+                    {
+                        slotId: `${zoneId}-grid`,
+                        type: 'bento',
+                        position: 'bottom',
+                        trigger: 'immediate',
+                        content: { items: data as BentoItem[] },
+                    },
+                ],
+            } as IAdsConfig
+        }
+
+        config.value = data
+        return data
     }
 
     async function trackEvent(event: IAdsEvent) {

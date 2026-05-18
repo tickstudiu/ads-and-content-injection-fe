@@ -12,7 +12,7 @@
                 background: #f7f7f8;
             }
             #app {
-                max-width: 800px;
+                max-width: 960px;
                 margin: 0 auto;
             }
             .badge {
@@ -23,7 +23,7 @@
                 font-size: 12px;
             }
             .ad-zone {
-                margin: 16px 0;
+                margin: 24px 0;
             }
             .ad-zone__label {
                 display: inline-block;
@@ -46,44 +46,73 @@
                 width: 100%;
                 max-width: 100%;
             }
+            /* ── AdBentoGrid — copy จาก src/assets/main.css
+                   (dist ยังไม่ได้ rebuild — ลบออกหลัง npm run build)
+               ──────────────────────────────────────────────── */
+            .ad-bento-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--ads-bento-grid-gap);
+            }
+            .ad-bento-grid__item--hero  { grid-column: span 3; }
+            .ad-bento-grid__item--wide  { grid-column: span 2; }
+            .ad-bento-grid__item--tall  { grid-row: span 2; }
+            .ad-bento-grid__item--small { grid-column: span 1; }
+
+            /* ── Bento loading / error states ─────────────────── */
+            .ads-bento-loading,
+            .ads-bento-error {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 200px;
+                border-radius: 8px;
+                font-size: 14px;
+                color: #888;
+                background: #f0f0f2;
+                border: 1px dashed #ccc;
+            }
+            .ads-bento-error { color: #d32f2f; background: #fff5f5; border-color: #ffcdd2; }
         </style>
     </head>
     <body>
         <div id="app">
             <!-- TOP BANNER -->
-            <div class="ad-zone" id="ad-top">
+            <div class="ad-zone">
                 <span class="ad-zone__label">Ad · Top Banner</span>
                 <span class="ad-zone__hint">zone: homepage-hero</span>
-                <ads-injector
+                <ads-banner-injector
                     zone-id="homepage-hero"
                     :client-id="clientId"
                     fallback-image="https://placehold.co/970x120/41b883/ffffff?text=VUE+2+%E2%80%94+TOP+BANNER+970x120"
                     fallback-link="https://example.com/promo-top"
-                ></ads-injector>
+                ></ads-banner-injector>
             </div>
 
-            <h1>
-                Demo: Vue 2 CDN Site
-                <span class="badge">Vue 2</span>
-            </h1>
-            <p>
-                นี่คือหน้าเว็บที่ใช้ Vue 2 — AdsInjector inject เข้ามาผ่าน Vue.component wrapper
-                พร้อม static mock banner เป็น fallback
-            </p>
-
-            <!-- INLINE BANNER -->
-            <div class="ad-zone" id="ad-inline">
+            <!-- INLINE -->
+            <div class="ad-zone">
                 <span class="ad-zone__label">Ad · Inline</span>
                 <span class="ad-zone__hint">zone: article-inline</span>
-                <ads-injector
+                <ads-inline-injector
                     zone-id="article-inline"
                     :client-id="clientId"
                     fallback-image="https://placehold.co/728x150/8b5cf6/ffffff?text=VUE+2+%E2%80%94+INLINE+728x150"
                     fallback-link="https://example.com/promo-inline"
-                ></ads-injector>
+                ></ads-inline-injector>
             </div>
 
-            <p>เนื้อหาส่วนล่างหลัง inline ad — ใช้ทดสอบ layout จริง</p>
+            <!-- BENTO GRID -->
+            <div class="ad-zone">
+                <span class="ad-zone__label">Ad · Bento Grid</span>
+                <span class="ad-zone__hint">zone: homepage-bento</span>
+                <ads-bento-injector
+                    zone-id="homepage-bento"
+                    :client-id="clientId"
+                    :columns="3"
+                    gap="12px"
+                    :fallback-items="bentoDemoItems"
+                ></ads-bento-injector>
+            </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
@@ -93,35 +122,424 @@
             const BASE_URL =
                 window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
 
-            Vue.component('ads-injector', {
-                props: ['zoneId', 'clientId', 'fallbackImage', 'fallbackLink'],
+            // ── shared fetch helper ──────────────────────────────────────────
+            // return Promise<Response> และ throw เมื่อ status 4xx/5xx
+            // component แต่ละตัวเรียก fetchZoneConfig แล้วตัดสินใจเองว่าจะ inject หรือ fallback
+            function fetchZoneConfig(zoneId, clientId) {
+                var qs = clientId ? '?client_id=' + encodeURIComponent(clientId) : ''
+                var url = BASE_URL + '/ads/v1/zones/' + encodeURIComponent(zoneId) + '/config' + qs
+                return fetch(url).then(function (res) {
+                    if (!res.ok) {
+                        // 4xx / 5xx → reject พร้อม HTTP status เพื่อให้ catch จับได้ชัดเจน
+                        return res.json().catch(function () { return {} }).then(function (body) {
+                            var err = new Error('HTTP ' + res.status)
+                            err.status = res.status
+                            err.body   = body
+                            throw err
+                        })
+                    }
+                    return res.json()
+                })
+            }
+
+            // ── ads-banner-injector ──────────────────────────────────────────
+            // - fetch /config ก่อนเสมอ
+            // - 4xx/5xx → showFallback = true  (widget ไม่ถูกเรียก)
+            // - 2xx     → showFallback = false, เรียก AdsInjector.inject
+            Vue.component('ads-banner-injector', {
+                props: {
+                    zoneId:        { type: String, required: true },
+                    clientId:      { type: String, default: '' },
+                    fallbackImage: { type: String, default: '' },
+                    fallbackLink:  { type: String, default: '#' },
+                },
                 template: `
                     <div ref="ads">
-                        <div class="com7-ads-banner" data-mock="true" v-if="showMock">
+                        <div class="com7-ads-banner" v-if="showFallback">
                             <a :href="fallbackLink" target="_blank" rel="noopener">
                                 <img :src="fallbackImage" alt="Advertisement" />
                             </a>
-                            <button class="com7-ads-banner__close" aria-label="Close ad" @click="showMock = false">×</button>
+                            <button class="com7-ads-banner__close" aria-label="Close ad"
+                                @click="showFallback = false">×</button>
                         </div>
                     </div>
                 `,
                 data() {
-                    return { showMock: true }
+                    return { showFallback: true }
                 },
                 mounted() {
-                    const A = AdsInjector?.default || AdsInjector
-                    A.inject(this.$refs.ads, {
-                        baseUrl: BASE_URL,
-                        clientId: this.clientId,
-                        zoneId: this.zoneId,
-                        onEvent: (e) => console.log('[Ad ' + this.zoneId + ']', e),
-                    })
+                    var self = this
+                    fetchZoneConfig(this.zoneId, this.clientId)
+                        .then(function () {
+                            // API ตอบ 2xx → ให้ widget inject ทับ
+                            self.showFallback = false
+                            var A = AdsInjector?.default || AdsInjector
+                            A.inject(self.$refs.ads, {
+                                baseUrl:  BASE_URL,
+                                clientId: self.clientId,
+                                zoneId:   self.zoneId,
+                                onEvent:  function (e) {
+                                    // ถ้า widget แจ้ง error ทีหลัง ให้กลับมาแสดง fallback
+                                    if (e.type === 'error') self.showFallback = true
+                                    console.log('[ads-banner-injector]', e)
+                                },
+                            })
+                        })
+                        .catch(function (err) {
+                            // 4xx / 5xx / network error → คง fallback ไว้
+                            console.warn(
+                                '[ads-banner-injector] zone "' + self.zoneId + '" fetch failed ' +
+                                '(status: ' + (err.status || 'network') + ') — showing fallback'
+                            )
+                        })
                 },
             })
 
+            // ── ads-inline-injector ──────────────────────────────────────────
+            // เหมือน ads-banner-injector ทุกอย่าง แต่ใช้ wrapper .com7-ads-inline
+            // และไม่มีปุ่มปิด (inline ad ไม่ dismissible โดย default)
+            Vue.component('ads-inline-injector', {
+                props: {
+                    zoneId:        { type: String, required: true },
+                    clientId:      { type: String, default: '' },
+                    fallbackImage: { type: String, default: '' },
+                    fallbackLink:  { type: String, default: '#' },
+                },
+                template: `
+                    <div ref="ads">
+                        <div class="com7-ads-inline" v-if="showFallback">
+                            <a :href="fallbackLink" target="_blank" rel="noopener">
+                                <img :src="fallbackImage" alt="Advertisement" />
+                            </a>
+                        </div>
+                    </div>
+                `,
+                data() {
+                    return { showFallback: true }
+                },
+                mounted() {
+                    var self = this
+                    fetchZoneConfig(this.zoneId, this.clientId)
+                        .then(function () {
+                            self.showFallback = false
+                            var A = AdsInjector?.default || AdsInjector
+                            A.inject(self.$refs.ads, {
+                                baseUrl:  BASE_URL,
+                                clientId: self.clientId,
+                                zoneId:   self.zoneId,
+                                onEvent:  function (e) {
+                                    if (e.type === 'error') self.showFallback = true
+                                    console.log('[ads-inline-injector]', e)
+                                },
+                            })
+                        })
+                        .catch(function (err) {
+                            console.warn(
+                                '[ads-inline-injector] zone "' + self.zoneId + '" fetch failed ' +
+                                '(status: ' + (err.status || 'network') + ') — showing fallback'
+                            )
+                        })
+                },
+            })
+
+            // ── ads-bento-injector ───────────────────────────────────────────
+            //
+            // Props
+            //   zone-id        {String}  required — zone ที่ API จะ return BentoItem[]
+            //   client-id      {String}  optional — ส่งเป็น query ?client_id=
+            //   columns        {Number}  default 3 — จำนวน column ของ grid
+            //   gap            {String}  default '12px' — CSS gap ของ grid
+            //   fallback-items {Array}   default [] — แสดงเมื่อ API fail หรือ return empty
+            //
+            // API Response รองรับ 3 รูปแบบ:
+            //   { items: BentoItem[] }            ← bento-specific endpoint
+            //   BentoItem[]                        ← raw array
+            //   { slots: [...] }                  ← general zone config (slot.content เป็น BentoItem)
+            //
+            Vue.component('ads-bento-injector', {
+                props: {
+                    zoneId:        { type: String, required: true },
+                    clientId:      { type: String, default: '' },
+                    columns:       { type: Number, default: 3 },
+                    gap:           { type: String, default: '12px' },
+                    fallbackItems: { type: Array,  default: () => [] },
+                },
+
+                template: `
+                    <div class="ads-bento-injector">
+                        <!-- Loading -->
+                        <div v-if="loading" class="ads-bento-loading">กำลังโหลด bento ads…</div>
+
+                        <!-- Error (fallback สำหรับ prod — ไม่แสดง error จริงต่อ user) -->
+                        <div v-else-if="error && !items.length" class="ads-bento-error">
+                            ⚠ ไม่สามารถโหลด ads ได้ ({{ zoneId }})
+                        </div>
+
+                        <!-- Bento Grid -->
+                        <div
+                            v-else-if="items.length"
+                            class="ad-bento-grid"
+                            :style="gridStyle"
+                            role="list"
+                            :aria-label="'Bento ads — ' + zoneId"
+                        >
+                            <div
+                                v-for="(item, i) in items"
+                                :key="item.id || i"
+                                :class="itemWrapClass(item)"
+                                role="listitem"
+                            >
+                                <div
+                                    :class="bentoCardClass(item)"
+                                    @click="handleCardClick(item)"
+                                >
+                                    <!-- Background image -->
+                                    <img
+                                        v-if="item.image_url"
+                                        class="ad-bento__img"
+                                        :src="item.image_url"
+                                        :alt="item.title || 'Advertisement'"
+                                        @error="onImgError($event)"
+                                    />
+
+                                    <!-- Gradient fallback -->
+                                    <div
+                                        class="ad-bento__gradient"
+                                        :style="{ background: gradient(i) }"
+                                    ></div>
+
+                                    <!-- Index debug label -->
+                                    <span class="ad-bento__index">
+                                        #{{ String(i + 1).padStart(2, '0') }}
+                                    </span>
+
+                                    <!-- Card body -->
+                                    <div class="ad-bento__body">
+                                        <!-- Badges / Tags -->
+                                        <div v-if="item.tags && item.tags.length" class="ad-bento__tags">
+                                            <span
+                                                v-for="tag in item.tags"
+                                                :key="tag"
+                                                class="ad-bento__badge"
+                                                :class="badgeClass(tag)"
+                                            >{{ tag }}</span>
+                                        </div>
+
+                                        <!-- Text -->
+                                        <div class="ad-bento__text">
+                                            <p class="ad-bento__title">{{ item.title }}</p>
+                                            <p v-if="item.description" class="ad-bento__desc">{{ item.description }}</p>
+                                        </div>
+
+                                        <!-- CTA -->
+                                        <button
+                                            v-if="item.cta_label"
+                                            class="ad-bento__cta"
+                                            @click.stop="handleCta(item)"
+                                        >{{ item.cta_label }}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Empty -->
+                        <div v-else class="ads-bento-error">ไม่พบ bento ads สำหรับ zone: {{ zoneId }}</div>
+                    </div>
+                `,
+
+                data() {
+                    return {
+                        items:   [],
+                        loading: true,
+                        error:   null,
+                    }
+                },
+
+                computed: {
+                    gridStyle() {
+                        return {
+                            gridTemplateColumns: 'repeat(' + this.columns + ', 1fr)',
+                            gap: this.gap,
+                        }
+                    },
+                },
+
+                mounted() {
+                    this.fetchBento()
+                },
+
+                methods: {
+                    // ── Fetch ────────────────────────────────────────────────
+                    fetchBento() {
+                        var self = this
+                        var qs = this.clientId ? '?client_id=' + encodeURIComponent(this.clientId) : ''
+                        var url = BASE_URL + '/ads/v1/zones/' + encodeURIComponent(this.zoneId) + '/config' + qs
+
+                        fetch(url)
+                            .then(function (res) {
+                                if (!res.ok) throw new Error('HTTP ' + res.status)
+                                return res.json()
+                            })
+                            .then(function (data) {
+                                // รองรับ response หลายรูปแบบ
+                                var list = Array.isArray(data)
+                                    ? data
+                                    : data.items   // { items: BentoItem[] }
+                                    || data.slots  // { slots: [...] }
+                                    || []
+
+                                self.items = list.length ? list : self.fallbackItems
+                                self.emit('impression', null)
+                            })
+                            .catch(function (err) {
+                                console.warn('[ads-bento-injector] fetch failed, using fallback:', err.message)
+                                self.error = err.message
+                                self.items = self.fallbackItems
+                            })
+                            .finally(function () {
+                                self.loading = false
+                            })
+                    },
+
+                    // ── Event helpers ────────────────────────────────────────
+                    emit(type, item) {
+                        var payload = {
+                            type:      type,
+                            zoneId:    this.zoneId,
+                            slotId:    item ? (item.id || this.zoneId) : this.zoneId,
+                            timestamp: Date.now(),
+                            meta: {
+                                adType:        'bento',
+                                pageUrl:       window.location.href,
+                                viewportWidth: window.innerWidth,
+                            },
+                        }
+                        console.log('[ads-bento-injector]', payload)
+                    },
+
+                    handleCardClick(item) {
+                        this.emit('click', item)
+                        if (item.cta_url) {
+                            window.open(item.cta_url, '_blank', 'noopener noreferrer')
+                        }
+                    },
+
+                    handleCta(item) {
+                        this.emit('click', item)
+                        if (item.cta_url) {
+                            window.open(item.cta_url, '_blank', 'noopener noreferrer')
+                        }
+                    },
+
+                    onImgError(e) {
+                        e.target.style.display = 'none'
+                    },
+
+                    // ── CSS class helpers ────────────────────────────────────
+                    itemWrapClass(item) {
+                        return 'ad-bento-grid__item--' + (item.type || 'small')
+                    },
+
+                    bentoCardClass(item) {
+                        return 'ad-bento ad-bento--' + (item.type || 'small')
+                    },
+
+                    badgeClass(tag) {
+                        var map = {
+                            hot:       'ad-bento__badge--hot',
+                            new:       'ad-bento__badge--new',
+                            promo:     'ad-bento__badge--promo',
+                            sale:      'ad-bento__badge--promo',
+                            exclusive: 'ad-bento__badge--exclusive',
+                        }
+                        return map[tag.toLowerCase()] || 'ad-bento__badge--default'
+                    },
+
+                    gradient(index) {
+                        var GRADIENTS = [
+                            'linear-gradient(135deg, #1a1a2e, #16213e)',
+                            'linear-gradient(135deg, #0d1117, #1a472a)',
+                            'linear-gradient(135deg, #1a0a2e, #2d0b4e)',
+                            'linear-gradient(135deg, #2d1515, #4e0b0b)',
+                            'linear-gradient(135deg, #0a1628, #1b3a6b)',
+                            'linear-gradient(135deg, #1a1500, #3d3000)',
+                            'linear-gradient(135deg, #001a1a, #00403f)',
+                        ]
+                        return GRADIENTS[index % GRADIENTS.length]
+                    },
+                },
+            })
+
+            // ── Root Vue instance ────────────────────────────────────────────
             new Vue({
                 el: '#app',
-                data: { clientId: window.PLAYGROUND_CONFIG?.clientId || 'demo-client' },
+                data: {
+                    clientId: window.PLAYGROUND_CONFIG?.clientId || 'demo-client',
+
+                    // Mock data — แสดงเมื่อ API ยังไม่พร้อมหรือ fetch fail
+                    bentoDemoItems: [
+                        {
+                            id: 'demo-hero',
+                            type: 'hero',
+                            title: 'Summer Sale 2026',
+                            description: 'ลดสูงสุด 50% สินค้า IT ทุกหมวด ช้อปเลยก่อนหมด',
+                            image_url: 'https://placehold.co/960x300/1a1a2e/ffffff?text=HERO+960x300',
+                            cta_label: 'ช้อปเลย',
+                            cta_url: 'https://example.com/summer-sale',
+                            tags: ['hot', 'sale'],
+                        },
+                        {
+                            id: 'demo-wide',
+                            type: 'wide',
+                            title: 'MacBook Pro M4',
+                            description: 'ผ่อน 0% นาน 10 เดือน เริ่มต้น 59,900 บาท',
+                            image_url: 'https://placehold.co/640x140/0d1117/ffffff?text=WIDE+640x140',
+                            cta_label: 'ดูโปรโมชัน',
+                            cta_url: 'https://example.com/macbook',
+                            tags: ['new'],
+                        },
+                        {
+                            id: 'demo-small-1',
+                            type: 'small',
+                            title: 'AirPods Pro',
+                            description: null,
+                            image_url: 'https://placehold.co/320x140/1a0a2e/ffffff?text=SMALL',
+                            cta_label: 'ดูสินค้า',
+                            cta_url: 'https://example.com/airpods',
+                            tags: ['promo'],
+                        },
+                        {
+                            id: 'demo-tall',
+                            type: 'tall',
+                            title: 'iPhone 16 Pro',
+                            description: 'กล้อง 48MP | A18 Pro | Titanium',
+                            image_url: 'https://placehold.co/320x280/2d1515/ffffff?text=TALL+320x280',
+                            cta_label: 'จองเลย',
+                            cta_url: 'https://example.com/iphone16',
+                            tags: ['exclusive'],
+                        },
+                        {
+                            id: 'demo-small-2',
+                            type: 'small',
+                            title: 'Samsung 4K TV',
+                            description: null,
+                            image_url: 'https://placehold.co/320x140/0a1628/ffffff?text=SMALL',
+                            cta_label: null,
+                            cta_url: 'https://example.com/samsung-tv',
+                            tags: [],
+                        },
+                        {
+                            id: 'demo-small-3',
+                            type: 'small',
+                            title: 'Garmin Watch',
+                            description: null,
+                            image_url: 'https://placehold.co/320x140/001a1a/ffffff?text=SMALL',
+                            cta_label: 'ดูรายละเอียด',
+                            cta_url: 'https://example.com/garmin',
+                            tags: ['new'],
+                        },
+                    ],
+                },
             })
         </script>
     </body>

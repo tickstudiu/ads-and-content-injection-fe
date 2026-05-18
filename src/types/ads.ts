@@ -1,5 +1,20 @@
-export type AdType = 'banner' | 'inline'
+export type AdType = 'banner' | 'inline' | 'bento'
 export type AdPosition = 'top' | 'bottom' | 'before' | 'after' | 'replace'
+
+// ── Bento ─────────────────────────────────────────────────────────────────────
+export type BentoItemType = 'hero' | 'wide' | 'tall' | 'small'
+
+/** Item แต่ละชิ้นที่ API /zones/bento/config ส่งมาเป็น array */
+export interface BentoItem {
+    id: string
+    type: BentoItemType
+    title: string | null
+    description: string | null
+    image_url: string | null
+    cta_label: string | null
+    cta_url: string | null
+    tags: string[]
+}
 export type AdTrigger = 'immediate' | 'scroll' | 'exit_intent' | 'time_delay'
 
 /**

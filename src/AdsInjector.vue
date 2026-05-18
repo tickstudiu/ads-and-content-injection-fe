@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, createApp, h } from 'vue'
 import type { IAdsSlot } from '@/types/ads'
 import AdBanner from '@/components/AdBanner.vue'
+import AdBentoGrid from '@/components/AdBentoGrid.vue'
 import { useConsent } from '@/composibles/useConsent'
 import { useAdsContext } from '@/composibles/useAdsContext'
 import { useAdsViewability } from '@/composibles/useAdsViewability'
@@ -61,6 +62,7 @@ const slotRegistry = new Map<string, IAdsSlot>()
 
 const componentMap: Record<string, any> = {
     banner: AdBanner,
+    bento: AdBentoGrid,
 }
 
 onMounted(async () => {
@@ -139,7 +141,14 @@ function renderSlot(slot: IAdsSlot) {
                 ...slot.content,
                 slotId: slot.slotId,
                 position: slot.position,
-                onClick: () => emitEvent('click', slot.slotId, slotMeta()),
+                onClick: (payload?: any) =>
+                    emitEvent('click', slot.slotId, {
+                        ...slotMeta(),
+                        // bento card-level tracking: แนบ id + type ของ card ที่คลิก
+                        ...(payload?.id != null
+                            ? { bentoItemId: payload.id, bentoItemType: payload.type }
+                            : {}),
+                    }),
                 onClose: () => {
                     // ── view_duration: บอกว่า ad แสดงรวมนานแค่ไหน ──────────
                     emitEvent('close', slot.slotId, slotMeta())

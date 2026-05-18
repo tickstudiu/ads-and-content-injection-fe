@@ -12,7 +12,7 @@
                 background: #f7f7f8;
             }
             #app {
-                max-width: 800px;
+                max-width: 960px;
                 margin: 0 auto;
             }
             .badge {
@@ -46,6 +46,20 @@
                 width: 100%;
                 max-width: 100%;
             }
+
+            /* ── AdBentoGrid — copy จาก src/assets/main.css
+                   (dist ยังไม่ได้ rebuild — ลบออกหลัง npm run build)
+               ──────────────────────────────────────────────── */
+            :root { --ads-bento-grid-gap: 12px; }
+            .ad-bento-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--ads-bento-grid-gap);
+            }
+            .ad-bento-grid__item--hero  { grid-column: span 3; }
+            .ad-bento-grid__item--wide  { grid-column: span 2; }
+            .ad-bento-grid__item--tall  { grid-row: span 2; }
+            .ad-bento-grid__item--small { grid-column: span 1; }
         </style>
     </head>
     <body>
@@ -90,6 +104,86 @@
                 </div>
             </div>
 
+            <!-- BENTO GRID -->
+            <div class="ad-zone">
+                <span class="ad-zone__label">Ad · Bento Grid</span>
+                <span class="ad-zone__hint">zone: homepage-bento</span>
+                <div id="ad-bento">
+                    <div class="ad-bento-grid" data-mock="true">
+                        <div class="ad-bento-grid__item--hero">
+                            <div class="ad-bento ad-bento--hero">
+                                <img class="ad-bento__img" src="https://placehold.co/960x300/1a1a2e/ffffff?text=HERO+960x300" alt="Summer Sale 2026" />
+                                <div class="ad-bento__gradient" style="background:linear-gradient(135deg,#1a1a2e,#16213e)"></div>
+                                <span class="ad-bento__index">#01</span>
+                                <div class="ad-bento__body">
+                                    <div class="ad-bento__tags">
+                                        <span class="ad-bento__badge ad-bento__badge--hot">hot</span>
+                                        <span class="ad-bento__badge ad-bento__badge--promo">sale</span>
+                                    </div>
+                                    <div class="ad-bento__text">
+                                        <p class="ad-bento__title">Summer Sale 2026</p>
+                                        <p class="ad-bento__desc">ลดสูงสุด 50% สินค้า IT ทุกหมวด ช้อปเลยก่อนหมด</p>
+                                    </div>
+                                    <button class="ad-bento__cta" onclick="window.open('https://example.com/summer-sale','_blank','noopener')">ช้อปเลย</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ad-bento-grid__item--wide">
+                            <div class="ad-bento ad-bento--wide">
+                                <img class="ad-bento__img" src="https://placehold.co/640x140/0d1117/ffffff?text=WIDE+640x140" alt="MacBook Pro M4" />
+                                <div class="ad-bento__gradient" style="background:linear-gradient(135deg,#0d1117,#1a472a)"></div>
+                                <span class="ad-bento__index">#02</span>
+                                <div class="ad-bento__body">
+                                    <div class="ad-bento__tags"><span class="ad-bento__badge ad-bento__badge--new">new</span></div>
+                                    <div class="ad-bento__text">
+                                        <p class="ad-bento__title">MacBook Pro M4</p>
+                                        <p class="ad-bento__desc">ผ่อน 0% นาน 10 เดือน เริ่มต้น 59,900 บาท</p>
+                                    </div>
+                                    <button class="ad-bento__cta" onclick="window.open('https://example.com/macbook','_blank','noopener')">ดูโปรโมชัน</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ad-bento-grid__item--tall">
+                            <div class="ad-bento ad-bento--tall">
+                                <img class="ad-bento__img" src="https://placehold.co/320x280/2d1515/ffffff?text=TALL+320x280" alt="iPhone 16 Pro" />
+                                <div class="ad-bento__gradient" style="background:linear-gradient(135deg,#2d1515,#4e0b0b)"></div>
+                                <span class="ad-bento__index">#03</span>
+                                <div class="ad-bento__body">
+                                    <div class="ad-bento__tags"><span class="ad-bento__badge ad-bento__badge--exclusive">exclusive</span></div>
+                                    <div class="ad-bento__text">
+                                        <p class="ad-bento__title">iPhone 16 Pro</p>
+                                        <p class="ad-bento__desc">กล้อง 48MP | A18 Pro | Titanium</p>
+                                    </div>
+                                    <button class="ad-bento__cta" onclick="window.open('https://example.com/iphone16','_blank','noopener')">จองเลย</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ad-bento-grid__item--small">
+                            <div class="ad-bento ad-bento--small">
+                                <img class="ad-bento__img" src="https://placehold.co/320x140/1a0a2e/ffffff?text=SMALL" alt="AirPods Pro" />
+                                <div class="ad-bento__gradient" style="background:linear-gradient(135deg,#1a0a2e,#2d0b4e)"></div>
+                                <span class="ad-bento__index">#04</span>
+                                <div class="ad-bento__body">
+                                    <div class="ad-bento__tags"><span class="ad-bento__badge ad-bento__badge--promo">promo</span></div>
+                                    <div class="ad-bento__text"><p class="ad-bento__title">AirPods Pro</p></div>
+                                    <button class="ad-bento__cta" onclick="window.open('https://example.com/airpods','_blank','noopener')">ดูสินค้า</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ad-bento-grid__item--small">
+                            <div class="ad-bento ad-bento--small">
+                                <img class="ad-bento__img" src="https://placehold.co/320x140/0a1628/ffffff?text=SMALL" alt="Samsung 4K TV" />
+                                <div class="ad-bento__gradient" style="background:linear-gradient(135deg,#0a1628,#1b3a6b)"></div>
+                                <span class="ad-bento__index">#05</span>
+                                <div class="ad-bento__body">
+                                    <div class="ad-bento__text"><p class="ad-bento__title">Samsung 4K TV</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <p>เนื้อหาส่วนล่างหลัง inline ad — ทดสอบ layout จริง</p>
         </div>
 
@@ -109,29 +203,53 @@
         <script src="/playground/env.js"></script>
         <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
         <script>
-            const { createApp } = Vue
             const baseUrl =
                 window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
             const clientId = window.PLAYGROUND_CONFIG?.clientId || 'demo-client'
 
-            createApp({
-                mounted() {
-                    const A = AdsInjector?.default || AdsInjector
-                    A.inject('#ad-top', {
-                        baseUrl,
-                        clientId,
-                        zoneId: 'homepage-hero',
-                        onEvent: (e) => console.log('[Ad Top]', e),
+            // ── shared fetch helper ──────────────────────────────────────────
+            // 4xx/5xx → reject พร้อม err.status เพื่อให้ catch แยก case ได้ชัด
+            function fetchZoneConfig(zoneId, clientId) {
+                const qs  = clientId ? '?client_id=' + encodeURIComponent(clientId) : ''
+                const url = baseUrl + '/ads/v1/zones/' + encodeURIComponent(zoneId) + '/config' + qs
+                return fetch(url).then((res) => {
+                    if (!res.ok) {
+                        return res.json().catch(() => ({})).then((body) => {
+                            const err = new Error('HTTP ' + res.status)
+                            err.status = res.status
+                            err.body   = body
+                            throw err
+                        })
+                    }
+                    return res.json()
+                })
+            }
+
+            // ── inject helper — pre-fetch ก่อน ถ้า 4xx ให้ mock อยู่ต่อ ──────
+            function injectAd(selector, zoneId, label) {
+                const A = AdsInjector?.default || AdsInjector
+                fetchZoneConfig(zoneId, clientId)
+                    .then(() => {
+                        A.inject(selector, {
+                            baseUrl,
+                            clientId,
+                            zoneId,
+                            onEvent: (e) => console.log('[' + label + ']', e),
+                        })
                     })
-                    A.inject('#ad-inline', {
-                        baseUrl,
-                        clientId,
-                        zoneId: 'article-inline',
-                        onEvent: (e) => console.log('[Ad Inline]', e),
+                    .catch((err) => {
+                        console.warn(
+                            '[' + label + '] fetch failed' +
+                            ' (status: ' + (err.status || 'network') + ') — showing fallback'
+                        )
                     })
-                },
-                template: '<slot></slot>',
-            }).mount('#app')
+            }
+
+            // ไม่ใช้ createApp เพราะไม่มี Vue component จริง ๆ
+            // script อยู่ท้าย body → DOM พร้อมแล้ว เรียกตรงได้เลย
+            injectAd('#ad-top',    'homepage-hero',  'Ad Top')
+            injectAd('#ad-inline', 'article-inline', 'Ad Inline')
+            injectAd('#ad-bento',  'homepage-bento', 'Ad Bento')
         </script>
     </body>
 </html>
