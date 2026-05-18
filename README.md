@@ -503,6 +503,36 @@ Pipeline: **Bitbucket Pipelines** → Build → S3 → Purge CloudFront + Cloudf
 
 ---
 
+## CSS Variables
+
+Override ได้ผ่าน `:root` ของ project ที่นำ widget ไปใช้:
+
+```css
+:root {
+    /* Grid */
+    --ads-bento-grid-gap: 12px;      /* gap ระหว่าง bento card */
+
+    /* Card */
+    --ads-bento-bg: #1c1c1e;
+    --ads-bento-radius: 8px;
+
+    /* Min-heights ตาม type */
+    --ads-bento-height-hero: 300px;
+    --ads-bento-height-tall: 280px;
+    --ads-bento-height-wide: 140px;
+    --ads-bento-height-small: 140px;
+
+    /* CTA button */
+    --ads-bento-cta-bg: #fff;
+    --ads-bento-cta-color: #000;
+    --ads-bento-cta-radius: 20px;
+}
+```
+
+> ดู variable ทั้งหมดได้ใน `src/assets/main.css` → section `:root`
+
+---
+
 ## Project Structure
 
 ```
@@ -510,12 +540,20 @@ src/
 ├── AdsInjector.vue        # Orchestrator — fetch config, schedule, render
 ├── entry.js               # CDN entry — exposes window.AdsInjector
 ├── components/
-│   └── AdBanner.vue       # Banner ad component
+│   ├── AdBanner.vue       # Banner ad component
+│   ├── AdBento.vue        # Bento card component (single card)
+│   └── AdBentoGrid.vue    # Bento grid container (รับ BentoItem[] จาก API)
 ├── composibles/           # useConsent, useAdsContext, useAdsViewability, ...
-├── types/ads.ts           # Type definitions (IAdsConfig, IAdsSlot, IAdsEvent)
-└── assets/main.css
+├── types/ads.ts           # Type definitions (IAdsConfig, IAdsSlot, BentoItem, IAdsEvent)
+└── assets/main.css        # Base styles + CSS variables (--ads-bento-*, --ads-*)
 
 playground/                # Local test pages — ดู section Testing
+├── index.html             # Plain HTML
+├── vue2-cdn.html          # Vue 2 CDN (ads-banner/inline/bento-injector components)
+├── vue3-cdn.html          # Vue 3 CDN (vanilla DOM + mountAd helper)
+├── vue3-module.html       # Vue 3 — dist โหลดผ่าน script src (IIFE ไม่ใช่ ESM)
+└── env.js                 # Local config (gitignored — copy จาก env.example.js)
+
 docs/                      # API spec + GTM container export
-dist/                      # Build output (git-ignored)
+dist/                      # Build output (gitignored)
 ```
