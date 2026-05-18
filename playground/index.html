@@ -9,6 +9,7 @@
             body {
                 font-family: sans-serif;
                 padding: 24px;
+                background: #f7f7f8;
             }
             .content-block {
                 max-width: 800px;
@@ -18,43 +19,122 @@
                 line-height: 1.8;
                 color: #333;
             }
-            #ads-mount {
-                min-height: 10px;
+            .ad-zone {
+                margin: 16px 0;
             }
-            #inline-target {
-                border: 2px dashed #ccc;
-                padding: 16px;
-                margin: 24px 0;
-                text-align: center;
-                color: #999;
+            .ad-zone__label {
+                display: inline-block;
+                background: #f59e0b;
+                color: #fff;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                padding: 2px 8px;
+                border-radius: 3px;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+            }
+            .ad-zone__hint {
+                color: #888;
+                font-size: 12px;
+                margin-left: 8px;
+            }
+            .com7-ads-banner img {
+                width: 100%;
+                max-width: 100%;
             }
         </style>
     </head>
     <body>
         <div class="content-block">
+            <!-- ┌─────────────────────────────────────────┐
+                 │  AD ZONE · TOP BANNER                   │
+                 └─────────────────────────────────────────┘ -->
+            <div class="ad-zone">
+                <span class="ad-zone__label">Ad · Top Banner</span>
+                <span class="ad-zone__hint">zone: homepage-hero</span>
+                <div id="ad-top">
+                    <!-- Static mock (จะถูก widget เขียนทับเมื่อ inject สำเร็จ) -->
+                    <div class="com7-ads-banner" data-mock="true">
+                        <a href="https://example.com/promo-top" target="_blank" rel="noopener">
+                            <img
+                                src="https://placehold.co/970x120/6366f1/ffffff?text=COM7+%E2%80%94+TOP+BANNER+970x120"
+                                alt="Top Advertisement"
+                            />
+                        </a>
+                        <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                    </div>
+                </div>
+            </div>
+
             <h1>Demo: Plain HTML Page</h1>
-            <div id="ads-mount"></div>
 
             <div class="article-body">
                 <p>
                     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-                    incididunt ut labore et dolore magna aliqua.
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
+                    nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
                 </p>
-                <div id="inline-target">[ Inline Ad Zone ]</div>
+
+                <!-- ┌─────────────────────────────────────────┐
+                     │  AD ZONE · INLINE                       │
+                     └─────────────────────────────────────────┘ -->
+                <div class="ad-zone">
+                    <span class="ad-zone__label">Ad · Inline</span>
+                    <span class="ad-zone__hint">zone: article-inline</span>
+                    <div id="ad-inline">
+                        <div class="com7-ads-banner" data-mock="true">
+                            <a href="https://example.com/promo-inline" target="_blank" rel="noopener">
+                                <img
+                                    src="https://placehold.co/728x150/8b5cf6/ffffff?text=INLINE+AD+728x150"
+                                    alt="Inline Advertisement"
+                                />
+                            </a>
+                            <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                        </div>
+                    </div>
+                </div>
+
                 <p>
-                    Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-                    aliquip ex ea commodo consequat.
+                    Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+                    fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+                    culpa qui officia deserunt mollit anim id est laborum.
                 </p>
             </div>
         </div>
 
+        <script>
+            // Static mock close handler (สำหรับ banner ก่อน widget จะ inject ทับ)
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('.com7-ads-banner__close')) {
+                    const banner = e.target.closest('.com7-ads-banner[data-mock]')
+                    if (banner) {
+                        banner.remove()
+                        console.log('[Mock Ad] closed')
+                    }
+                }
+            })
+        </script>
+
+        <script src="/playground/env.js"></script>
         <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
         <script>
-            AdsInjector.inject('#ads-mount', {
-                baseUrl: 'https://api-dev.com7.in',
-                clientId: 'shop-001',
+            // Widget injection — ถ้า API ตอบ ad data จริง จะ render ทับ mock
+            const baseUrl = window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
+            const clientId = window.PLAYGROUND_CONFIG?.clientId || 'demo-client'
+
+            AdsInjector.inject('#ad-top', {
+                baseUrl,
+                clientId,
                 zoneId: 'homepage-hero',
-                onEvent: (e) => console.log('[Ad Event]', e),
+                onEvent: (e) => console.log('[Ad Top]', e),
+            })
+
+            AdsInjector.inject('#ad-inline', {
+                baseUrl,
+                clientId,
+                zoneId: 'article-inline',
+                onEvent: (e) => console.log('[Ad Inline]', e),
             })
         </script>
     </body>

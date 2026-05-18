@@ -11,10 +11,20 @@
 window.PLAYGROUND_CONFIG = {
     /**
      * Base URL ของ Backend Ads API (ไม่มี trailing slash)
-     * - ใช้ 'https://api-mock.local'  → XHR interceptor รับแทน (ไม่ต้องมี backend)
-     * - เปลี่ยนเป็น URL จริง          → ยิง API จริง (ต้องมี CORS)
+     *
+     * แนะนำสำหรับ local test:
+     *   - ใช้ Beeceptor / mockapi.io ฯลฯ → ตั้ง rule ตอบ
+     *       GET  /ads/v1/zones/{zoneId}/config  → 200 + IAdsConfig
+     *       POST /ads/v1/events                 → 204
+     *
+     * ตัวอย่างที่ใช้อยู่:
+     *   'https://ads-n-content.free.beeceptor.com'
+     *
+     * ดู mock data ตัวอย่างได้ใน docs/ หรือ test ด้วย zone:
+     *   - homepage-hero
+     *   - article-inline
      */
-    baseUrl: 'https://api-mock.local',
+    baseUrl: 'https://ads-n-content.free.beeceptor.com',
 
     /**
      * Client ID ที่ widget ส่งไปใน query string ?client_id=...
@@ -42,8 +52,8 @@ window.PLAYGROUND_CONFIG = {
     imageCdn: 'https://placehold.co',
 
     /**
-     * true  → ใช้ XHR interceptor แทน API จริง
-     * false → ยิง VITE_PLAYGROUND_BASE_URL จริง (ต้อง backend พร้อม)
+     * Reserved flag — สำหรับสลับ mock vs production API ในอนาคต
+     * ปัจจุบัน widget ยิง API ตาม baseUrl โดยตรง
      */
-    useMockApi: true,
+    useMockApi: false,
 }

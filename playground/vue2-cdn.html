@@ -9,6 +9,11 @@
             body {
                 font-family: sans-serif;
                 padding: 24px;
+                background: #f7f7f8;
+            }
+            #app {
+                max-width: 800px;
+                margin: 0 auto;
             }
             .badge {
                 background: #41b883;
@@ -17,38 +22,106 @@
                 border-radius: 4px;
                 font-size: 12px;
             }
+            .ad-zone {
+                margin: 16px 0;
+            }
+            .ad-zone__label {
+                display: inline-block;
+                background: #f59e0b;
+                color: #fff;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                padding: 2px 8px;
+                border-radius: 3px;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+            }
+            .ad-zone__hint {
+                color: #888;
+                font-size: 12px;
+                margin-left: 8px;
+            }
+            .com7-ads-banner img {
+                width: 100%;
+                max-width: 100%;
+            }
         </style>
     </head>
     <body>
         <div id="app">
+            <!-- TOP BANNER -->
+            <div class="ad-zone" id="ad-top">
+                <span class="ad-zone__label">Ad · Top Banner</span>
+                <span class="ad-zone__hint">zone: homepage-hero</span>
+                <ads-injector
+                    zone-id="homepage-hero"
+                    :client-id="clientId"
+                    fallback-image="https://placehold.co/970x120/41b883/ffffff?text=VUE+2+%E2%80%94+TOP+BANNER+970x120"
+                    fallback-link="https://example.com/promo-top"
+                ></ads-injector>
+            </div>
+
             <h1>
                 Demo: Vue 2 CDN Site
                 <span class="badge">Vue 2</span>
             </h1>
-            <ads-injector :zone-id="zoneId" :client-id="clientId"></ads-injector>
-            <p>นี่คือหน้าเว็บที่ใช้ Vue 2 — AdsInjector inject เข้ามาผ่าน Vue.component wrapper</p>
+            <p>
+                นี่คือหน้าเว็บที่ใช้ Vue 2 — AdsInjector inject เข้ามาผ่าน Vue.component wrapper
+                พร้อม static mock banner เป็น fallback
+            </p>
+
+            <!-- INLINE BANNER -->
+            <div class="ad-zone" id="ad-inline">
+                <span class="ad-zone__label">Ad · Inline</span>
+                <span class="ad-zone__hint">zone: article-inline</span>
+                <ads-injector
+                    zone-id="article-inline"
+                    :client-id="clientId"
+                    fallback-image="https://placehold.co/728x150/8b5cf6/ffffff?text=VUE+2+%E2%80%94+INLINE+728x150"
+                    fallback-link="https://example.com/promo-inline"
+                ></ads-injector>
+            </div>
+
+            <p>เนื้อหาส่วนล่างหลัง inline ad — ใช้ทดสอบ layout จริง</p>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+        <script src="/playground/env.js"></script>
         <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
         <script>
+            const BASE_URL =
+                window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
+
             Vue.component('ads-injector', {
-                props: ['zoneId', 'clientId'],
-                template: '<div ref="ads"></div>',
+                props: ['zoneId', 'clientId', 'fallbackImage', 'fallbackLink'],
+                template: `
+                    <div ref="ads">
+                        <div class="com7-ads-banner" data-mock="true" v-if="showMock">
+                            <a :href="fallbackLink" target="_blank" rel="noopener">
+                                <img :src="fallbackImage" alt="Advertisement" />
+                            </a>
+                            <button class="com7-ads-banner__close" aria-label="Close ad" @click="showMock = false">×</button>
+                        </div>
+                    </div>
+                `,
+                data() {
+                    return { showMock: true }
+                },
                 mounted() {
                     const A = AdsInjector?.default || AdsInjector
                     A.inject(this.$refs.ads, {
-                        baseUrl: 'https://api-dev.com7.in',
+                        baseUrl: BASE_URL,
                         clientId: this.clientId,
                         zoneId: this.zoneId,
-                        onEvent: (e) => console.log('Ad event:', e),
+                        onEvent: (e) => console.log('[Ad ' + this.zoneId + ']', e),
                     })
                 },
             })
 
             new Vue({
                 el: '#app',
-                data: { zoneId: 'homepage-hero', clientId: 'shop-001' },
+                data: { clientId: window.PLAYGROUND_CONFIG?.clientId || 'demo-client' },
             })
         </script>
     </body>

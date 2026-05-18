@@ -2,10 +2,6 @@
 import { onMounted, onUnmounted, createApp, h } from 'vue'
 import type { IAdsSlot } from '@/types/ads'
 import AdBanner from '@/components/AdBanner.vue'
-import AdPopup from '@/components/AdPopup.vue'
-import AdInline from '@/components/AdInline.vue'
-import AdStickyBar from '@/components/AdStickyBar.vue'
-import AdFloating from '@/components/AdFloating.vue'
 import { useConsent } from '@/composibles/useConsent'
 import { useAdsContext } from '@/composibles/useAdsContext'
 import { useAdsViewability } from '@/composibles/useAdsViewability'
@@ -40,28 +36,31 @@ const { emit: emitEvent } = useAdsEvents(props.zoneId, (e) => {
 })
 
 // ── Viewability (IAB standard: ≥ 50% visible ≥ 1 วินาที) ────────────────────
-const { observe: observeViewability, unobserve: unobserveViewability, disconnectAll } =
-    useAdsViewability((slotId) => {
-        // หา slot จาก slotId เพื่อแนบ campaign meta
-        const slot = slotRegistry.get(slotId)
-        emitEvent('view', slotId, buildMeta({
+const {
+    observe: observeViewability,
+    unobserve: unobserveViewability,
+    disconnectAll,
+} = useAdsViewability((slotId) => {
+    // หา slot จาก slotId เพื่อแนบ campaign meta
+    const slot = slotRegistry.get(slotId)
+    emitEvent(
+        'view',
+        slotId,
+        buildMeta({
             adType: slot?.type,
             trigger: slot?.trigger,
             campaignId: slot?.campaignId,
             variantId: slot?.variantId,
             utmSource: slot?.utmSource,
-        }))
-    })
+        })
+    )
+})
 
 // registry เก็บ slot config ไว้ lookup ใน viewability callback
 const slotRegistry = new Map<string, IAdsSlot>()
 
 const componentMap: Record<string, any> = {
     banner: AdBanner,
-    popup: AdPopup,
-    inline: AdInline,
-    sticky_bar: AdStickyBar,
-    floating: AdFloating,
 }
 
 onMounted(async () => {
@@ -72,23 +71,31 @@ onMounted(async () => {
             schedule(slot, () => {
                 // ── Frequency Cap ─────────────────────────────────────────────
                 if (slot.frequencyCap && !checkFrequencyCap(slot.slotId, slot.frequencyCap)) {
-                    emitEvent('frequency_capped', slot.slotId, buildMeta({
-                        adType: slot.type,
-                        trigger: slot.trigger,
-                        campaignId: slot.campaignId,
-                        variantId: slot.variantId,
-                    }))
+                    emitEvent(
+                        'frequency_capped',
+                        slot.slotId,
+                        buildMeta({
+                            adType: slot.type,
+                            trigger: slot.trigger,
+                            campaignId: slot.campaignId,
+                            variantId: slot.variantId,
+                        })
+                    )
                     return
                 }
 
                 // ── Impression ────────────────────────────────────────────────
-                emitEvent('impression', slot.slotId, buildMeta({
-                    adType: slot.type,
-                    trigger: slot.trigger,
-                    campaignId: slot.campaignId,
-                    variantId: slot.variantId,
-                    utmSource: slot.utmSource,
-                }))
+                emitEvent(
+                    'impression',
+                    slot.slotId,
+                    buildMeta({
+                        adType: slot.type,
+                        trigger: slot.trigger,
+                        campaignId: slot.campaignId,
+                        variantId: slot.variantId,
+                        utmSource: slot.utmSource,
+                    })
+                )
 
                 renderSlot(slot)
             })
@@ -114,13 +121,14 @@ function renderSlot(slot: IAdsSlot) {
     container.setAttribute('data-ads-slot', slot.slotId)
 
     // ── Campaign meta ที่แนบทุก event ของ slot นี้ ────────────────────────────
-    const slotMeta = () => buildMeta({
-        adType: slot.type,
-        trigger: slot.trigger,
-        campaignId: slot.campaignId,
-        variantId: slot.variantId,
-        utmSource: slot.utmSource,
-    })
+    const slotMeta = () =>
+        buildMeta({
+            adType: slot.type,
+            trigger: slot.trigger,
+            campaignId: slot.campaignId,
+            variantId: slot.variantId,
+            utmSource: slot.utmSource,
+        })
 
     // ── Impression timestamp สำหรับ view_duration ─────────────────────────────
     const impressionAt = Date.now()

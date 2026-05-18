@@ -1,4 +1,4 @@
-export type AdType = 'banner' | 'popup' | 'inline' | 'sticky_bar' | 'floating'
+export type AdType = 'banner' | 'inline'
 export type AdPosition = 'top' | 'bottom' | 'before' | 'after' | 'replace'
 export type AdTrigger = 'immediate' | 'scroll' | 'exit_intent' | 'time_delay'
 
@@ -36,15 +36,15 @@ export interface IAdsSlot {
     type: AdType
     position: AdPosition
     trigger: AdTrigger
-    triggerDelay?: number        // ms — ใช้กับ time_delay
-    triggerScrollPct?: number    // 0-100 — ใช้กับ scroll
-    targetSelector?: string      // CSS selector ของ element ที่ inject before/after/replace
+    triggerDelay?: number // ms — ใช้กับ time_delay
+    triggerScrollPct?: number // 0-100 — ใช้กับ scroll
+    targetSelector?: string // CSS selector ของ element ที่ inject before/after/replace
     content: IAdsContent
     frequencyCap?: IFrequencyCap
     // ── Campaign attribution ─────────────────────────────────────────────────
-    campaignId?: string          // ผูก campaign ใน Marketing tools
-    variantId?: string           // A/B test variant
-    utmSource?: string           // ถ้า ad link ออก external
+    campaignId?: string // ผูก campaign ใน Marketing tools
+    variantId?: string // A/B test variant
+    utmSource?: string // ถ้า ad link ออก external
 }
 
 export interface IAdsContent {
@@ -63,20 +63,20 @@ export interface IFrequencyCap {
 /** Structured meta ที่ widget แนบอัตโนมัติทุก event */
 export interface IAdsEventMeta {
     // ── Page context ──────────────────────────────────────────────────────────
-    pageUrl?: string             // window.location.href ตอน event เกิด
-    sessionId?: string           // random UUID ต่อ browser session (sessionStorage)
+    pageUrl?: string // window.location.href ตอน event เกิด
+    sessionId?: string // random UUID ต่อ browser session (sessionStorage)
     // ── Ad context ───────────────────────────────────────────────────────────
-    trigger?: AdTrigger          // trigger ที่ทำให้ ad แสดง
-    adType?: AdType              // ประเภท ad component
+    trigger?: AdTrigger // trigger ที่ทำให้ ad แสดง
+    adType?: AdType // ประเภท ad component
     campaignId?: string
     variantId?: string
     utmSource?: string
     // ── Behavioral ───────────────────────────────────────────────────────────
-    scrollDepthPct?: number      // 0-100 — scroll depth ตอน event เกิด
-    viewportWidth?: number       // px — ใช้แยก mobile/desktop behavior
-    timeOnPageMs?: number        // ms — อยู่บนหน้านานแค่ไหนก่อน event นี้
+    scrollDepthPct?: number // 0-100 — scroll depth ตอน event เกิด
+    viewportWidth?: number // px — ใช้แยก mobile/desktop behavior
+    timeOnPageMs?: number // ms — อยู่บนหน้านานแค่ไหนก่อน event นี้
     // ── view_duration specific ────────────────────────────────────────────────
-    visibleDurationMs?: number   // ms — ad แสดงอยู่นานแค่ไหนก่อน close/unmount
+    visibleDurationMs?: number // ms — ad แสดงอยู่นานแค่ไหนก่อน close/unmount
     // ── error specific ────────────────────────────────────────────────────────
     errorMessage?: string
     // ── freeform ─────────────────────────────────────────────────────────────

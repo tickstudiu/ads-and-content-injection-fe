@@ -9,6 +9,11 @@
             body {
                 font-family: sans-serif;
                 padding: 24px;
+                background: #f7f7f8;
+            }
+            .page {
+                max-width: 800px;
+                margin: 0 auto;
             }
             .badge {
                 background: #42b883;
@@ -17,25 +22,111 @@
                 border-radius: 4px;
                 font-size: 12px;
             }
+            .ad-zone {
+                margin: 16px 0;
+            }
+            .ad-zone__label {
+                display: inline-block;
+                background: #f59e0b;
+                color: #fff;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                padding: 2px 8px;
+                border-radius: 3px;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+            }
+            .ad-zone__hint {
+                color: #888;
+                font-size: 12px;
+                margin-left: 8px;
+            }
+            .com7-ads-banner img {
+                width: 100%;
+                max-width: 100%;
+            }
         </style>
     </head>
     <body>
-        <div id="ads-mount"></div>
-        <h1>
-            Demo: Vue 3 Module
-            <span class="badge">ESM</span>
-        </h1>
-        <p>นี่คือหน้าเว็บที่ใช้ Vue 3 แบบ ES module — import AdsInjector โดยตรง</p>
+        <div class="page">
+            <!-- TOP BANNER -->
+            <div class="ad-zone">
+                <span class="ad-zone__label">Ad · Top Banner</span>
+                <span class="ad-zone__hint">zone: homepage-hero</span>
+                <div id="ad-top">
+                    <div class="com7-ads-banner" data-mock="true">
+                        <a href="https://example.com/promo-top" target="_blank" rel="noopener">
+                            <img
+                                src="https://placehold.co/970x120/0ea5e9/ffffff?text=ESM+%E2%80%94+TOP+BANNER+970x120"
+                                alt="Top Advertisement"
+                            />
+                        </a>
+                        <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <h1>
+                Demo: Vue 3 Module
+                <span class="badge">ESM</span>
+            </h1>
+            <p>นี่คือหน้าเว็บที่ใช้ Vue 3 แบบ ES module — import AdsInjector โดยตรง</p>
+
+            <!-- INLINE BANNER -->
+            <div class="ad-zone">
+                <span class="ad-zone__label">Ad · Inline</span>
+                <span class="ad-zone__hint">zone: article-inline</span>
+                <div id="ad-inline">
+                    <div class="com7-ads-banner" data-mock="true">
+                        <a href="https://example.com/promo-inline" target="_blank" rel="noopener">
+                            <img
+                                src="https://placehold.co/728x150/8b5cf6/ffffff?text=ESM+%E2%80%94+INLINE+728x150"
+                                alt="Inline Advertisement"
+                            />
+                        </a>
+                        <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <p>เนื้อหาส่วนล่างหลัง inline ad — ทดสอบ layout จริงเมื่อ widget render เสร็จ</p>
+        </div>
+
+        <script>
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('.com7-ads-banner__close')) {
+                    const banner = e.target.closest('.com7-ads-banner[data-mock]')
+                    if (banner) {
+                        banner.remove()
+                        console.log('[Mock Ad] closed')
+                    }
+                }
+            })
+        </script>
+
+        <script src="/playground/env.js"></script>
 
         <script type="module">
             import { createApp } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.js'
             import AdsInjector from '/dist/com7-ads-inject-widget-v1.0.0.js'
 
-            AdsInjector.inject('#ads-mount', {
-                baseUrl: 'https://api-dev.com7.in',
-                clientId: 'shop-001',
+            const config = {
+                baseUrl:
+                    window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com',
+                clientId: window.PLAYGROUND_CONFIG?.clientId || 'demo-client',
+            }
+
+            AdsInjector.inject('#ad-top', {
+                ...config,
                 zoneId: 'homepage-hero',
-                onEvent: (e) => console.log('[Ad Event]', e),
+                onEvent: (e) => console.log('[Ad Top]', e),
+            })
+
+            AdsInjector.inject('#ad-inline', {
+                ...config,
+                zoneId: 'article-inline',
+                onEvent: (e) => console.log('[Ad Inline]', e),
             })
         </script>
     </body>
