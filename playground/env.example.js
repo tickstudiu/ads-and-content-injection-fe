@@ -5,7 +5,7 @@
  * 2. แก้ค่าตาม environment ของตัวเอง
  * 3. ไฟล์ env.js ถูก gitignore แล้ว — ห้าม commit ค่าจริง
  *
- * ไฟล์นี้จะถูกโหลดก่อน GTM และ widget scripts ทุกตัวใน mock.html
+ * ไฟล์นี้จะถูกโหลดก่อน GTM และ widget scripts ทุกตัวใน playground
  * ══════════════════════════════════════════════════════════════
  */
 window.PLAYGROUND_CONFIG = {

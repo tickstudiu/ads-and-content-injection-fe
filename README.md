@@ -61,29 +61,10 @@ Server จะรันที่ **http://localhost:4000**
 
 | URL | คำอธิบาย |
 |---|---|
-| http://localhost:4000/playground/mock.html | ✅ **แนะนำ** — ทดสอบได้เลย ไม่ต้องพึ่ง API จริง |
 | http://localhost:4000/playground/index.html | Plain HTML + API จริง |
 | http://localhost:4000/playground/vue2-cdn.html | Vue 2 CDN wrapper |
 | http://localhost:4000/playground/vue3-cdn.html | Vue 3 CDN |
 | http://localhost:4000/playground/vue3-module.html | Vue 3 ES Module |
-
-### Mock Playground (`mock.html`)
-
-หน้านี้ใช้ XHR interceptor แทน API จริง แสดง Ad ทุก type พร้อมกัน:
-
-| เวลา | Ad ที่แสดง |
-|---|---|
-| ทันที | Sticky Bar ด้านบน + Banner หลัง element เป้าหมาย |
-| 2 วินาที | Popup interstitial |
-| 3 วินาที | Floating widget มุมขวาล่าง |
-| Scroll 30% | Inline ad |
-
-ด้านล่างของหน้ามี **Event Log** แสดง `impression / click / close` แบบ real-time
-
-**ปุ่มที่มีให้กด:**
-- 🔄 **Reload Page** — เริ่มทดสอบใหม่
-- 🗑 **Clear Frequency Cap** — ล้าง localStorage เพื่อให้ Popup แสดงซ้ำได้
-- 🧹 **Clear Log** — ล้าง event log
 
 ---
 
