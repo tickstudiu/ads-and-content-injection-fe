@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AdsInjector — Plain HTML Demo</title>
+        <link rel="stylesheet" href="/dist/com7-ads-inject-widget-v1.0.0.css" />
+        <style>
+            body {
+                font-family: sans-serif;
+                padding: 24px;
+            }
+            .content-block {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            .article-body {
+                line-height: 1.8;
+                color: #333;
+            }
+            #ads-mount {
+                min-height: 10px;
+            }
+            #inline-target {
+                border: 2px dashed #ccc;
+                padding: 16px;
+                margin: 24px 0;
+                text-align: center;
+                color: #999;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="content-block">
+            <h1>Demo: Plain HTML Page</h1>
+            <div id="ads-mount"></div>
+
+            <div class="article-body">
+                <p>
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua.
+                </p>
+                <div id="inline-target">[ Inline Ad Zone ]</div>
+                <p>
+                    Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+                    aliquip ex ea commodo consequat.
+                </p>
+            </div>
+        </div>
+
+        <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
+        <script>
+            AdsInjector.inject('#ads-mount', {
+                baseUrl: 'https://api-dev.com7.in',
+                clientId: 'shop-001',
+                zoneId: 'homepage-hero',
+                onEvent: (e) => console.log('[Ad Event]', e),
+            })
+        </script>
+    </body>
+</html>

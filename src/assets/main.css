@@ -1,0 +1,214 @@
+/* com7-ads-injector CSS variables */
+:root {
+    --ads-z-index: 9990;
+    --ads-popup-overlay: rgba(0, 0, 0, 0.5);
+    --ads-sticky-height: 60px;
+    --ads-floating-bottom: 80px;
+    --ads-floating-right: 20px;
+    --ads-border-radius: 8px;
+    --ads-animation-duration: 0.3s;
+    --ads-close-btn-size: 28px;
+    --ads-close-btn-color: #fff;
+    --ads-close-btn-bg: rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   Banner
+   ============================================================ */
+.com7-ads-banner {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.com7-ads-banner img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--ads-border-radius);
+}
+
+.com7-ads-banner__close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: var(--ads-close-btn-size);
+    height: var(--ads-close-btn-size);
+    background: var(--ads-close-btn-bg);
+    color: var(--ads-close-btn-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--ads-animation-duration);
+}
+
+.com7-ads-banner__close:hover {
+    opacity: 0.8;
+}
+
+/* ============================================================
+   Popup / Interstitial
+   ============================================================ */
+.com7-ads-popup__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--ads-z-index);
+    background: var(--ads-popup-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.com7-ads-popup {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: var(--ads-border-radius);
+    overflow: hidden;
+}
+
+.com7-ads-popup img {
+    display: block;
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+.com7-ads-popup__close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: var(--ads-close-btn-size);
+    height: var(--ads-close-btn-size);
+    background: var(--ads-close-btn-bg);
+    color: var(--ads-close-btn-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: opacity var(--ads-animation-duration);
+}
+
+.com7-ads-popup__close:hover {
+    opacity: 0.8;
+}
+
+/* ============================================================
+   Sticky Bar
+   ============================================================ */
+.com7-ads-sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: var(--ads-z-index);
+    height: var(--ads-sticky-height);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.com7-ads-sticky--top {
+    top: 0;
+}
+
+.com7-ads-sticky--bottom {
+    bottom: 0;
+}
+
+.com7-ads-sticky img {
+    max-height: calc(var(--ads-sticky-height) - 8px);
+    width: auto;
+}
+
+.com7-ads-sticky button {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--ads-close-btn-size);
+    height: var(--ads-close-btn-size);
+    background: var(--ads-close-btn-bg);
+    color: var(--ads-close-btn-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   Floating Widget
+   ============================================================ */
+.com7-ads-floating {
+    position: fixed;
+    bottom: var(--ads-floating-bottom);
+    right: var(--ads-floating-right);
+    z-index: var(--ads-z-index);
+    border-radius: var(--ads-border-radius);
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.com7-ads-floating img {
+    display: block;
+    max-width: 200px;
+}
+
+.com7-ads-floating__close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: var(--ads-close-btn-size);
+    height: var(--ads-close-btn-size);
+    background: var(--ads-close-btn-bg);
+    color: var(--ads-close-btn-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   Inline
+   ============================================================ */
+.com7-ads-inline {
+    width: 100%;
+    text-align: center;
+    margin: 16px 0;
+}
+
+.com7-ads-inline img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--ads-border-radius);
+}
+
+/* ============================================================
+   Fade transition
+   ============================================================ */
+.ads-fade-enter-active,
+.ads-fade-leave-active {
+    transition: opacity var(--ads-animation-duration) ease;
+}
+
+.ads-fade-enter-from,
+.ads-fade-leave-to {
+    opacity: 0;
+}

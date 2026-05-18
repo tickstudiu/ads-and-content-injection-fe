@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="th">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AdsInjector — Vue 2 CDN Demo</title>
+        <link rel="stylesheet" href="/dist/com7-ads-inject-widget-v1.0.0.css" />
+        <style>
+            body {
+                font-family: sans-serif;
+                padding: 24px;
+            }
+            .badge {
+                background: #41b883;
+                color: #fff;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <h1>
+                Demo: Vue 2 CDN Site
+                <span class="badge">Vue 2</span>
+            </h1>
+            <ads-injector :zone-id="zoneId" :client-id="clientId"></ads-injector>
+            <p>นี่คือหน้าเว็บที่ใช้ Vue 2 — AdsInjector inject เข้ามาผ่าน Vue.component wrapper</p>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+        <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
+        <script>
+            Vue.component('ads-injector', {
+                props: ['zoneId', 'clientId'],
+                template: '<div ref="ads"></div>',
+                mounted() {
+                    const A = AdsInjector?.default || AdsInjector
+                    A.inject(this.$refs.ads, {
+                        baseUrl: 'https://api-dev.com7.in',
+                        clientId: this.clientId,
+                        zoneId: this.zoneId,
+                        onEvent: (e) => console.log('Ad event:', e),
+                    })
+                },
+            })
+
+            new Vue({
+                el: '#app',
+                data: { zoneId: 'homepage-hero', clientId: 'shop-001' },
+            })
+        </script>
+    </body>
+</html>

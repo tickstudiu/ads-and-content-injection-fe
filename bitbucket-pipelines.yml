@@ -1,0 +1,90 @@
+image: node:20
+
+definitions:
+    caches:
+        bun: ~/.bun
+
+    steps:
+        - step: &build
+              name: Build
+              caches:
+                  - bun
+              script:
+                  - curl -fsSL https://bun.sh/install | bash
+                  - export PATH="$HOME/.bun/bin:$PATH"
+                  - bun install
+                  - bun run build
+              artifacts:
+                  - dist/**
+
+        - step: &deploy-stg
+              name: Deploy to STG (S3)
+              image: amazon/aws-cli:latest
+              script:
+                  - aws s3 sync dist/ s3://$STG_S3_BUCKET/ads-widget/ --delete --cache-control "public, max-age=31536000, immutable"
+                  - echo "Deployed to STG bucket: $STG_S3_BUCKET"
+
+        - step: &deploy-prod
+              name: Deploy to PROD (S3)
+              image: amazon/aws-cli:latest
+              script:
+                  - aws s3 sync dist/ s3://$PROD_S3_BUCKET/ads-widget/ --delete --cache-control "public, max-age=31536000, immutable"
+                  - echo "Deployed to PROD bucket: $PROD_S3_BUCKET"
+
+        - step: &purge-stg
+              name: Purge STG CDN Cache (CloudFront + Cloudflare)
+              image: amazon/aws-cli:latest
+              script:
+                  - >
+                      aws cloudfront create-invalidation
+                      --distribution-id $STG_CLOUDFRONT_DISTRIBUTION_ID
+                      --paths "/ads-widget/*"
+                  - >
+                      curl -X POST "https://api.cloudflare.com/client/v4/zones/$STG_CLOUDFLARE_ZONE_ID/purge_cache"
+                      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+                      -H "Content-Type: application/json"
+                      --data '{"purge_everything":true}'
+
+        - step: &purge-prod
+              name: Purge PROD CDN Cache (CloudFront + Cloudflare)
+              image: amazon/aws-cli:latest
+              script:
+                  - >
+                      aws cloudfront create-invalidation
+                      --distribution-id $PROD_CLOUDFRONT_DISTRIBUTION_ID
+                      --paths "/ads-widget/*"
+                  - >
+                      curl -X POST "https://api.cloudflare.com/client/v4/zones/$PROD_CLOUDFLARE_ZONE_ID/purge_cache"
+                      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+                      -H "Content-Type: application/json"
+                      --data '{"purge_everything":true}'
+
+pipelines:
+    branches:
+        develop:
+            - step: *build
+            - step: *deploy-stg
+            - step: *purge-stg
+
+        main:
+            - step: *build
+            - step:
+                  <<: *deploy-prod
+                  deployment: production
+                  trigger: manual
+            - step:
+                  <<: *purge-prod
+                  trigger: manual
+
+    pull-requests:
+        '**':
+            - step:
+                  name: Build Check (PR)
+                  caches:
+                      - bun
+                  script:
+                      - curl -fsSL https://bun.sh/install | bash
+                      - export PATH="$HOME/.bun/bin:$PATH"
+                      - bun install
+                      - bun run build
+                      - echo "Build OK ✓"
