@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, createApp, h } from 'vue'
+import { onMounted, onUnmounted, createApp, h } from 'vue'
 import type { IAdsSlot } from '@/types/ads'
 import AdBanner from '@/components/AdBanner.vue'
 import AdPopup from '@/components/AdPopup.vue'
 import AdInline from '@/components/AdInline.vue'
 import AdStickyBar from '@/components/AdStickyBar.vue'
 import AdFloating from '@/components/AdFloating.vue'
+import { useConsent } from '@/composibles/useConsent'
+import { useAdsContext } from '@/composibles/useAdsContext'
+import { useAdsViewability } from '@/composibles/useAdsViewability'
 
 const props = defineProps({
     baseUrl: { type: String, default: '' },
@@ -14,17 +17,44 @@ const props = defineProps({
     onEvent: { type: Function, default: null },
 })
 
+// ── Consent (Google Consent Mode v2) ─────────────────────────────────────────
+const { canTrack, canUseStorage } = useConsent()
+
+// ── Context builder — แนบ meta ทุก event อัตโนมัติ ──────────────────────────
+const { buildMeta } = useAdsContext()
+
+// ── API ───────────────────────────────────────────────────────────────────────
 const { fetchConfig, trackEvent } = useAdsApi({
     baseUrl: props.baseUrl,
     clientId: props.clientId,
     zoneId: props.zoneId,
 })
-const { schedule, checkFrequencyCap } = useAdsScheduler()
+
+// ── Scheduler & Frequency Cap ─────────────────────────────────────────────────
+const { schedule, checkFrequencyCap } = useAdsScheduler({ canUseStorage })
+
+// ── Events ────────────────────────────────────────────────────────────────────
 const { emit: emitEvent } = useAdsEvents(props.zoneId, (e) => {
-    trackEvent(e)
+    if (canTrack()) trackEvent(e)
     props.onEvent?.(e)
 })
-const { injectBefore, injectAfter, injectReplace, injectTop, injectBottom } = useAdsTarget()
+
+// ── Viewability (IAB standard: ≥ 50% visible ≥ 1 วินาที) ────────────────────
+const { observe: observeViewability, unobserve: unobserveViewability, disconnectAll } =
+    useAdsViewability((slotId) => {
+        // หา slot จาก slotId เพื่อแนบ campaign meta
+        const slot = slotRegistry.get(slotId)
+        emitEvent('view', slotId, buildMeta({
+            adType: slot?.type,
+            trigger: slot?.trigger,
+            campaignId: slot?.campaignId,
+            variantId: slot?.variantId,
+            utmSource: slot?.utmSource,
+        }))
+    })
+
+// registry เก็บ slot config ไว้ lookup ใน viewability callback
+const slotRegistry = new Map<string, IAdsSlot>()
 
 const componentMap: Record<string, any> = {
     banner: AdBanner,
@@ -38,18 +68,39 @@ onMounted(async () => {
     try {
         const config = await fetchConfig()
         config.slots.forEach((slot: IAdsSlot) => {
+            slotRegistry.set(slot.slotId, slot)
             schedule(slot, () => {
-                // ตรวจสอบ frequency cap ก่อนแสดง
+                // ── Frequency Cap ─────────────────────────────────────────────
                 if (slot.frequencyCap && !checkFrequencyCap(slot.slotId, slot.frequencyCap)) {
+                    emitEvent('frequency_capped', slot.slotId, buildMeta({
+                        adType: slot.type,
+                        trigger: slot.trigger,
+                        campaignId: slot.campaignId,
+                        variantId: slot.variantId,
+                    }))
                     return
                 }
-                emitEvent('impression', slot.slotId)
+
+                // ── Impression ────────────────────────────────────────────────
+                emitEvent('impression', slot.slotId, buildMeta({
+                    adType: slot.type,
+                    trigger: slot.trigger,
+                    campaignId: slot.campaignId,
+                    variantId: slot.variantId,
+                    utmSource: slot.utmSource,
+                }))
+
                 renderSlot(slot)
             })
         })
     } catch (err) {
         console.error('[AdsInjector] Failed to load ads config:', err)
     }
+})
+
+onUnmounted(() => {
+    disconnectAll()
+    slotRegistry.clear()
 })
 
 function renderSlot(slot: IAdsSlot) {
@@ -62,15 +113,33 @@ function renderSlot(slot: IAdsSlot) {
     const container = document.createElement('div')
     container.setAttribute('data-ads-slot', slot.slotId)
 
+    // ── Campaign meta ที่แนบทุก event ของ slot นี้ ────────────────────────────
+    const slotMeta = () => buildMeta({
+        adType: slot.type,
+        trigger: slot.trigger,
+        campaignId: slot.campaignId,
+        variantId: slot.variantId,
+        utmSource: slot.utmSource,
+    })
+
+    // ── Impression timestamp สำหรับ view_duration ─────────────────────────────
+    const impressionAt = Date.now()
+
     const app = createApp({
         render: () =>
             h(Component, {
                 ...slot.content,
                 slotId: slot.slotId,
                 position: slot.position,
-                onClick: () => emitEvent('click', slot.slotId),
+                onClick: () => emitEvent('click', slot.slotId, slotMeta()),
                 onClose: () => {
-                    emitEvent('close', slot.slotId)
+                    // ── view_duration: บอกว่า ad แสดงรวมนานแค่ไหน ──────────
+                    emitEvent('close', slot.slotId, slotMeta())
+                    emitEvent('view_duration', slot.slotId, {
+                        ...slotMeta(),
+                        visibleDurationMs: Date.now() - impressionAt,
+                    })
+                    unobserveViewability(slot.slotId)
                     app.unmount()
                     container.remove()
                 },
@@ -78,7 +147,7 @@ function renderSlot(slot: IAdsSlot) {
     })
     app.mount(container)
 
-    // Inject ลง DOM ตาม position
+    // ── Inject ลง DOM ตาม position ───────────────────────────────────────────
     switch (slot.position) {
         case 'before':
             if (slot.targetSelector) injectBefore(slot.targetSelector, container)
@@ -97,7 +166,33 @@ function renderSlot(slot: IAdsSlot) {
             injectBottom(slot.targetSelector ?? 'body', container)
             break
     }
+
+    // ── Hover tracking: fire เมื่อ hover ≥ 500ms ──────────────────────────────
+    let hoverTimer: ReturnType<typeof setTimeout> | null = null
+    let hoverFired = false
+
+    container.addEventListener('mouseenter', () => {
+        if (hoverFired) return
+        hoverTimer = setTimeout(() => {
+            hoverFired = true
+            emitEvent('hover', slot.slotId, slotMeta())
+        }, 500)
+    })
+    container.addEventListener('mouseleave', () => {
+        if (hoverTimer) {
+            clearTimeout(hoverTimer)
+            hoverTimer = null
+        }
+    })
+
+    // ── Viewability: เริ่ม observe หลัง inject เข้า DOM แล้ว ─────────────────
+    // requestAnimationFrame เพื่อให้ browser paint ก่อน ค่อย observe
+    requestAnimationFrame(() => {
+        observeViewability(slot.slotId, container)
+    })
 }
+
+const { injectBefore, injectAfter, injectReplace, injectTop, injectBottom } = useAdsTarget()
 </script>
 
 <template>

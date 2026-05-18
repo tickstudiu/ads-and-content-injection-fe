@@ -1,7 +1,12 @@
 import { onUnmounted } from 'vue'
 import type { IAdsSlot, IFrequencyCap } from '@/types/ads'
 
-export function useAdsScheduler() {
+export interface UseAdsSchedulerOptions {
+    /** ถ้า false → ข้าม localStorage ทั้งหมด (ad_storage: denied) */
+    canUseStorage?: () => boolean
+}
+
+export function useAdsScheduler({ canUseStorage = () => true }: UseAdsSchedulerOptions = {}) {
     const timers: ReturnType<typeof setTimeout>[] = []
     const scrollHandlers: (() => void)[] = []
 
@@ -35,6 +40,9 @@ export function useAdsScheduler() {
     }
 
     function checkFrequencyCap(slotId: string, cap: IFrequencyCap): boolean {
+        // ถ้า ad_storage denied → ข้าม frequency cap (แสดงได้เสมอ แต่ไม่จำ)
+        if (!canUseStorage()) return true
+
         const key = `ads_fc_${slotId}`
         const raw = localStorage.getItem(key)
         const record = raw ? JSON.parse(raw) : { count: 0, resetAt: Date.now() + cap.periodMs }

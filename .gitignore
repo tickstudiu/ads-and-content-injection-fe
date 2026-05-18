@@ -15,6 +15,9 @@ bun.lockb
 .env.local
 .env.*.local
 
+# Playground local config (commit env.example.js แทน)
+playground/env.js
+
 # Editor
 .vscode/
 .idea/

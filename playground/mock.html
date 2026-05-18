@@ -3,394 +3,978 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>AdsInjector — Mock Demo (ไม่ต้องพึ่ง API)</title>
+        <title>AdsInjector — Mock Playground</title>
         <link rel="stylesheet" href="/dist/com7-ads-inject-widget-v1.0.0.css" />
+
+        <!-- Playground Config — โหลดก่อนทุกอย่าง
+             Copy playground/env.example.js → playground/env.js แล้วแก้ค่า
+             ถ้าไม่มี env.js จะใช้ default config แทน -->
+        <script>
+            window.PLAYGROUND_CONFIG = {
+                baseUrl:          'https://api-mock.local',
+                clientId:         'demo-client',
+                gtmContainerId:   'GTM-XXXXXXX',
+                consentDefault:   'denied',
+                imageCdn:         'https://placehold.co',
+                useMockApi:       true,
+            }
+        </script>
+        <script src="./env.js" onerror="console.info('[Playground] env.js not found — using defaults. Copy env.example.js → env.js to configure.')"></script>
+
+        <!-- Google Tag Manager — Container ID อ่านจาก PLAYGROUND_CONFIG -->
+        <script>
+            ;(function(cfg) {
+                var id = cfg.gtmContainerId
+                if (!id || id === 'GTM-XXXXXXX') { console.info('[Playground] GTM disabled — set gtmContainerId in env.js'); return }
+                var w=window,d=document,l='dataLayer'
+                w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'})
+                var f=d.getElementsByTagName('script')[0],j=d.createElement('script')
+                j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+id
+                f.parentNode.insertBefore(j,f)
+            })(window.PLAYGROUND_CONFIG)
+        </script>
+        <!-- End Google Tag Manager -->
+
+        <!-- Consent Mode v2 — default อ่านจาก PLAYGROUND_CONFIG.consentDefault -->
+        <script>
+            ;(function(cfg) {
+                var s = cfg.consentDefault || 'denied'
+                window.dataLayer = window.dataLayer || []
+                window.dataLayer.push(['consent', 'default', {
+                    ad_storage: s, ad_user_data: s,
+                    ad_personalization: s, analytics_storage: s,
+                    wait_for_update: 500,
+                }])
+            })(window.PLAYGROUND_CONFIG)
+        </script>
+
         <style>
-            * {
-                box-sizing: border-box;
-            }
-            body {
-                font-family: sans-serif;
-                margin: 0;
-                padding: 0;
-                background: #f5f5f5;
-            }
+            * { box-sizing: border-box; }
+            body { font-family: sans-serif; margin: 0; padding: 0; background: #f0f2f5; }
 
+            /* ── Header ── */
             .page-header {
-                background: #1a1a2e;
-                color: #fff;
-                padding: 16px 24px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
+                background: #1a1a2e; color: #fff;
+                padding: 14px 24px; display: flex; align-items: center; gap: 12px;
+                position: sticky; top: 0; z-index: 9000;
             }
-            .page-header h1 {
-                margin: 0;
-                font-size: 18px;
-            }
-            .badge {
-                background: #e94560;
-                padding: 2px 10px;
-                border-radius: 12px;
-                font-size: 11px;
-                letter-spacing: 0.5px;
-            }
+            .page-header h1 { margin: 0; font-size: 16px; }
+            .badge { background: #e94560; padding: 2px 10px; border-radius: 12px; font-size: 11px; }
 
+            /* ── Controls bar ── */
             .controls {
-                background: #fff;
-                border-bottom: 1px solid #e0e0e0;
-                padding: 12px 24px;
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-                align-items: center;
-            }
-            .controls label {
-                font-size: 13px;
-                color: #666;
-                margin-right: 4px;
+                background: #fff; border-bottom: 1px solid #e0e0e0;
+                padding: 8px 24px; display: flex; gap: 8px; flex-wrap: wrap;
+                align-items: center; position: sticky; top: 46px; z-index: 8999;
             }
             .btn {
-                padding: 6px 14px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                background: #fff;
-                cursor: pointer;
-                font-size: 13px;
-                transition: all 0.15s;
+                padding: 5px 12px; border: 1px solid #ddd; border-radius: 6px;
+                background: #fff; cursor: pointer; font-size: 12px; transition: all 0.15s;
             }
-            .btn:hover {
-                background: #f0f0f0;
+            .btn:hover { background: #f5f5f5; }
+            .consent-status { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: bold; }
+            .consent-status.granted { background: #d4edda; color: #155724; }
+            .consent-status.denied  { background: #f8d7da; color: #721c24; }
+
+            /* ── Tab nav ── */
+            .tab-nav {
+                background: #fff; border-bottom: 2px solid #e0e0e0;
+                padding: 0 24px; display: flex; gap: 0;
+                position: sticky; top: 88px; z-index: 8998;
             }
-            .btn.active {
-                background: #e94560;
-                color: #fff;
-                border-color: #e94560;
+            .tab-btn {
+                padding: 12px 20px; border: none; background: none;
+                cursor: pointer; font-size: 13px; color: #666; font-weight: 500;
+                border-bottom: 3px solid transparent; margin-bottom: -2px;
+                transition: all 0.15s; white-space: nowrap;
+            }
+            .tab-btn:hover { color: #1a1a2e; background: #f9f9f9; }
+            .tab-btn.active { color: #e94560; border-bottom-color: #e94560; font-weight: 700; }
+
+            /* ── Tab content ── */
+            .tab-content { display: none; padding: 24px; max-width: 900px; margin: 0 auto; }
+            .tab-content.active { display: block; }
+
+            /* ── Case section ── */
+            .case-section {
+                background: #fff; border-radius: 12px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; overflow: hidden;
+            }
+            .case-header {
+                padding: 14px 20px; background: #1a1a2e; color: #fff;
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            .case-header h3 { margin: 0; font-size: 14px; }
+            .case-meta {
+                display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+            }
+            .tag {
+                font-size: 11px; padding: 2px 8px; border-radius: 20px;
+                font-weight: 600; letter-spacing: 0.3px;
+            }
+            .tag.type    { background: #e94560; color: #fff; }
+            .tag.trigger { background: #42b883; color: #fff; }
+            .tag.pos     { background: #00b4d8; color: #fff; }
+            .tag.delay   { background: #ff9f43; color: #fff; }
+            .tag.freq    { background: #a29bfe; color: #fff; }
+
+            .case-body { padding: 20px; }
+            .case-desc {
+                font-size: 12px; color: #888; background: #f9f9f9;
+                border-left: 3px solid #e94560; padding: 8px 12px;
+                border-radius: 0 6px 6px 0; margin-bottom: 16px;
             }
 
-            .content-area {
-                max-width: 860px;
-                margin: 32px auto;
-                padding: 0 24px;
+            /* ── Target placeholder ── */
+            .inject-target {
+                border: 2px dashed #ccc; border-radius: 8px;
+                padding: 14px; text-align: center; color: #bbb;
+                font-size: 12px; margin: 12px 0; background: #fafafa;
             }
-            .article-card {
-                background: #fff;
-                border-radius: 12px;
-                padding: 28px;
-                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-                margin-bottom: 24px;
+            .inject-target code { color: #e94560; }
+
+            /* ── Article dummy content ── */
+            .article-text { color: #555; line-height: 1.7; font-size: 14px; }
+
+            /* ── Test button ── */
+            .btn-test {
+                display: inline-flex; align-items: center; gap: 6px;
+                padding: 8px 18px; background: #e94560; color: #fff;
+                border: none; border-radius: 8px; cursor: pointer;
+                font-size: 13px; font-weight: 600; transition: background 0.15s;
             }
-            .article-card h2 {
-                margin-top: 0;
-                color: #1a1a2e;
-            }
-            .article-card p {
-                color: #555;
-                line-height: 1.7;
+            .btn-test:hover { background: #c73652; }
+            .btn-test:disabled { background: #ccc; cursor: not-allowed; }
+            .btn-reset {
+                display: inline-flex; align-items: center; gap: 6px;
+                padding: 8px 14px; background: #f0f0f0; color: #444;
+                border: none; border-radius: 8px; cursor: pointer; font-size: 12px;
             }
 
-            #ads-mount-top {
-                min-height: 4px;
+            /* ── Tab intro ── */
+            .tab-intro {
+                background: #1a1a2e; color: #fff; border-radius: 12px;
+                padding: 20px 24px; margin-bottom: 24px;
             }
-            #ads-mount-inline {
-                min-height: 4px;
-            }
+            .tab-intro h2 { margin: 0 0 6px; font-size: 18px; }
+            .tab-intro p { margin: 0; color: #aaa; font-size: 13px; }
 
-            #target-before {
-                border-left: 3px solid #42b883;
-                padding: 12px 16px;
-                background: #f0faf5;
-                border-radius: 0 8px 8px 0;
-                color: #2d7a56;
-                font-size: 14px;
-                margin: 20px 0;
-            }
-
+            /* ── Log Panel ── */
             .log-panel {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: #1a1a2e;
-                color: #a8ff78;
-                font-family: monospace;
-                font-size: 12px;
-                padding: 8px 16px;
-                max-height: 120px;
-                overflow-y: auto;
-                border-top: 2px solid #e94560;
-                z-index: 99999;
+                position: fixed; bottom: 0; left: 0; right: 0;
+                background: #1a1a2e; color: #a8ff78;
+                font-family: monospace; font-size: 11px;
+                padding: 6px 16px; max-height: 110px; overflow-y: auto;
+                border-top: 2px solid #e94560; z-index: 99999;
             }
-            .log-panel .log-line {
-                padding: 2px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            .log-panel .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            .log-panel .log-line.impression { color: #a8ff78; }
+            .log-panel .log-line.view       { color: #00e5ff; }
+            .log-panel .log-line.click      { color: #ffd700; }
+            .log-panel .log-line.close      { color: #87ceeb; }
+            .log-panel .log-line.hover      { color: #ff9f43; }
+            .log-panel .log-line.view_duration  { color: #a29bfe; }
+            .log-panel .log-line.frequency_capped { color: #636e72; }
+            .log-panel .log-line.error      { color: #ff6b6b; }
+            .log-panel .log-line.system     { color: #ffffff; opacity: 0.7; }
+
+            /* ── Consent Banner ── */
+            .consent-banner {
+                position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+                background: #fff; border: 2px solid #1a1a2e; border-radius: 12px;
+                padding: 14px 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                z-index: 99998; display: flex; align-items: center; gap: 12px;
+                font-size: 13px; max-width: 500px;
             }
-            .log-panel .log-line.error {
-                color: #ff6b6b;
-            }
-            .log-panel .log-line.impression {
-                color: #a8ff78;
-            }
-            .log-panel .log-line.click {
-                color: #ffd700;
-            }
-            .log-panel .log-line.close {
-                color: #87ceeb;
-            }
+            .consent-banner p { margin: 0; color: #333; }
+            .btn-accept { background: #42b883; color: #fff; border: none; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+            .btn-deny   { background: #e0e0e0; color: #333; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+
+            .spacer { height: 120px; }
         </style>
     </head>
     <body>
-        <!-- ===== MOCK axios interceptor — ก่อน load widget ===== -->
+        <!-- GTM noscript -->
         <script>
-            /**
-             * Mock สำหรับ axios — intercept GET /ads/v1/zones/:zoneId/config
-             * ส่งกลับ IAdsConfig ที่ประกอบด้วย slot ทุก type
-             */
-            window.__ADS_MOCK_CONFIG__ = {
-                zoneId: 'homepage-hero',
-                slots: [
-                    // 1. Sticky Bar — top, immediate
-                    {
-                        slotId: 'slot-sticky-top',
-                        type: 'sticky_bar',
-                        position: 'top',
-                        trigger: 'immediate',
-                        content: {
-                            imageUrl:
-                                'https://placehold.co/800x60/e94560/ffffff?text=🔥+Sticky+Top+Ad+Banner',
-                            linkUrl: '#sticky-demo',
-                            linkTarget: '_blank',
-                        },
-                    },
-                    // 2. Popup — delay 2s
-                    {
-                        slotId: 'slot-popup',
-                        type: 'popup',
-                        position: 'top',
-                        trigger: 'time_delay',
-                        triggerDelay: 2000,
-                        content: {
-                            imageUrl:
-                                'https://placehold.co/480x320/1a1a2e/ffffff?text=🎯+Popup+Ad+(2s+delay)',
-                            linkUrl: '#popup-demo',
-                        },
-                        frequencyCap: { maxShows: 2, periodMs: 60000 },
-                    },
-                    // 3. Banner — inline, immediate
-                    {
-                        slotId: 'slot-banner',
-                        type: 'banner',
-                        position: 'after',
-                        trigger: 'immediate',
-                        targetSelector: '#target-before',
-                        content: {
-                            imageUrl:
-                                'https://placehold.co/728x90/42b883/ffffff?text=📢+Banner+Ad+(after+%23target-before)',
-                            linkUrl: '#banner-demo',
-                            altText: 'Demo Banner Ad',
-                        },
-                    },
-                    // 4. Inline — scroll 30%
-                    {
-                        slotId: 'slot-inline',
-                        type: 'inline',
-                        position: 'bottom',
-                        trigger: 'scroll',
-                        triggerScrollPct: 30,
-                        targetSelector: '#ads-mount-inline',
-                        content: {
-                            imageUrl:
-                                'https://placehold.co/600x120/f7c59f/333333?text=📌+Inline+Ad+(scroll+30%25)',
-                            linkUrl: '#inline-demo',
-                        },
-                    },
-                    // 5. Floating — bottom-right, delay 3s
-                    {
-                        slotId: 'slot-floating',
-                        type: 'floating',
-                        position: 'bottom',
-                        trigger: 'time_delay',
-                        triggerDelay: 3000,
-                        content: {
-                            imageUrl:
-                                'https://placehold.co/180x240/1a1a2e/ffffff?text=💬+Floating+Ad',
-                            linkUrl: '#floating-demo',
-                        },
-                    },
-                ],
-            }
+            ;(function(cfg){
+                var id = cfg.gtmContainerId
+                if (!id || id === 'GTM-XXXXXXX') return
+                var ns = document.createElement('noscript')
+                var iframe = document.createElement('iframe')
+                iframe.src = 'https://www.googletagmanager.com/ns.html?id=' + id
+                iframe.height = '0'; iframe.width = '0'
+                iframe.style.cssText = 'display:none;visibility:hidden'
+                ns.appendChild(iframe)
+                document.body.insertBefore(ns, document.body.firstChild)
+            })(window.PLAYGROUND_CONFIG)
         </script>
 
-        <!-- Page Layout -->
+        <!-- ═══════════════════════════════════════════════
+             MOCK INTERCEPTOR
+        ═══════════════════════════════════════════════ -->
+        <script>
+            // Mock configs แยกตาม zoneId
+            window.__ADS_MOCK_CONFIGS__ = {
+
+                // ── BANNER ──────────────────────────────────────────
+                'zone-banner-top': { zoneId: 'zone-banner-top', slots: [{
+                    slotId: 'slot-banner-top', type: 'banner', position: 'top',
+                    trigger: 'immediate', campaignId: 'camp-banner', variantId: 'v-top',
+                    targetSelector: '#banner-case-1-body',
+                    content: { imageUrl: 'https://placehold.co/820x90/e94560/ffffff?text=Banner+|+position%3Atop', linkUrl: '#', altText: 'Banner Top' },
+                }]},
+                'zone-banner-bottom': { zoneId: 'zone-banner-bottom', slots: [{
+                    slotId: 'slot-banner-bottom', type: 'banner', position: 'bottom',
+                    trigger: 'immediate', campaignId: 'camp-banner', variantId: 'v-bottom',
+                    targetSelector: '#banner-case-2-body',
+                    content: { imageUrl: 'https://placehold.co/820x90/1a1a2e/ffffff?text=Banner+|+position%3Abottom', linkUrl: '#', altText: 'Banner Bottom' },
+                }]},
+                'zone-banner-after': { zoneId: 'zone-banner-after', slots: [{
+                    slotId: 'slot-banner-after', type: 'banner', position: 'after',
+                    trigger: 'immediate', campaignId: 'camp-banner', variantId: 'v-after',
+                    targetSelector: '#banner-target-after',
+                    content: { imageUrl: 'https://placehold.co/820x90/42b883/ffffff?text=Banner+|+position%3Aafter+%23target', linkUrl: '#', altText: 'Banner After' },
+                }]},
+                'zone-banner-before': { zoneId: 'zone-banner-before', slots: [{
+                    slotId: 'slot-banner-before', type: 'banner', position: 'before',
+                    trigger: 'immediate', campaignId: 'camp-banner', variantId: 'v-before',
+                    targetSelector: '#banner-target-before',
+                    content: { imageUrl: 'https://placehold.co/820x90/00b4d8/ffffff?text=Banner+|+position%3Abefore+%23target', linkUrl: '#', altText: 'Banner Before' },
+                }]},
+                'zone-banner-replace': { zoneId: 'zone-banner-replace', slots: [{
+                    slotId: 'slot-banner-replace', type: 'banner', position: 'replace',
+                    trigger: 'immediate', campaignId: 'camp-banner', variantId: 'v-replace',
+                    targetSelector: '#banner-target-replace',
+                    content: { imageUrl: 'https://placehold.co/820x90/ff9f43/ffffff?text=Banner+|+position%3Areplace+%23target', linkUrl: '#', altText: 'Banner Replace' },
+                }]},
+
+                // ── POPUP ───────────────────────────────────────────
+                'zone-popup-immediate': { zoneId: 'zone-popup-immediate', slots: [{
+                    slotId: 'slot-popup-immediate', type: 'popup', position: 'top',
+                    trigger: 'immediate', campaignId: 'camp-popup', variantId: 'v-imm',
+                    content: { imageUrl: 'https://placehold.co/480x320/e94560/ffffff?text=Popup+|+trigger%3Aimmediate', linkUrl: '#' },
+                }]},
+                'zone-popup-delay': { zoneId: 'zone-popup-delay', slots: [{
+                    slotId: 'slot-popup-delay', type: 'popup', position: 'top',
+                    trigger: 'time_delay', triggerDelay: 3000,
+                    campaignId: 'camp-popup', variantId: 'v-delay',
+                    frequencyCap: { maxShows: 3, periodMs: 300000 },
+                    content: { imageUrl: 'https://placehold.co/480x320/1a1a2e/ffffff?text=Popup+|+trigger%3Atime_delay+3s', linkUrl: '#' },
+                }]},
+                'zone-popup-exit': { zoneId: 'zone-popup-exit', slots: [{
+                    slotId: 'slot-popup-exit', type: 'popup', position: 'top',
+                    trigger: 'exit_intent', campaignId: 'camp-popup', variantId: 'v-exit',
+                    content: { imageUrl: 'https://placehold.co/480x320/42b883/ffffff?text=Popup+|+trigger%3Aexit_intent', linkUrl: '#' },
+                }]},
+
+                // ── INLINE ──────────────────────────────────────────
+                'zone-inline-immediate': { zoneId: 'zone-inline-immediate', slots: [{
+                    slotId: 'slot-inline-imm', type: 'inline', position: 'bottom',
+                    trigger: 'immediate', campaignId: 'camp-inline', variantId: 'v-imm',
+                    targetSelector: '#inline-mount-1',
+                    content: { imageUrl: 'https://placehold.co/820x120/e94560/ffffff?text=Inline+|+trigger%3Aimmediate', linkUrl: '#' },
+                }]},
+                'zone-inline-scroll30': { zoneId: 'zone-inline-scroll30', slots: [{
+                    slotId: 'slot-inline-s30', type: 'inline', position: 'bottom',
+                    trigger: 'scroll', triggerScrollPct: 30,
+                    campaignId: 'camp-inline', variantId: 'v-scroll30',
+                    targetSelector: '#inline-mount-2',
+                    content: { imageUrl: 'https://placehold.co/820x120/42b883/ffffff?text=Inline+|+trigger%3Ascroll+30%25', linkUrl: '#' },
+                }]},
+                'zone-inline-scroll60': { zoneId: 'zone-inline-scroll60', slots: [{
+                    slotId: 'slot-inline-s60', type: 'inline', position: 'bottom',
+                    trigger: 'scroll', triggerScrollPct: 60,
+                    campaignId: 'camp-inline', variantId: 'v-scroll60',
+                    targetSelector: '#inline-mount-3',
+                    content: { imageUrl: 'https://placehold.co/820x120/1a1a2e/ffffff?text=Inline+|+trigger%3Ascroll+60%25', linkUrl: '#' },
+                }]},
+
+                // ── STICKY BAR ──────────────────────────────────────
+                'zone-sticky-top': { zoneId: 'zone-sticky-top', slots: [{
+                    slotId: 'slot-sticky-top', type: 'sticky_bar', position: 'top',
+                    trigger: 'immediate', campaignId: 'camp-sticky', variantId: 'v-top',
+                    content: { imageUrl: 'https://placehold.co/900x60/e94560/ffffff?text=StickyBar+|+position%3Atop', linkUrl: '#' },
+                }]},
+                'zone-sticky-bottom': { zoneId: 'zone-sticky-bottom', slots: [{
+                    slotId: 'slot-sticky-bottom', type: 'sticky_bar', position: 'bottom',
+                    trigger: 'immediate', campaignId: 'camp-sticky', variantId: 'v-bottom',
+                    content: { imageUrl: 'https://placehold.co/900x60/1a1a2e/ffffff?text=StickyBar+|+position%3Abottom', linkUrl: '#' },
+                }]},
+                'zone-sticky-delay': { zoneId: 'zone-sticky-delay', slots: [{
+                    slotId: 'slot-sticky-delay', type: 'sticky_bar', position: 'top',
+                    trigger: 'time_delay', triggerDelay: 3000,
+                    campaignId: 'camp-sticky', variantId: 'v-delay',
+                    content: { imageUrl: 'https://placehold.co/900x60/42b883/ffffff?text=StickyBar+|+trigger%3Atime_delay+3s', linkUrl: '#' },
+                }]},
+
+                // ── FLOATING ────────────────────────────────────────
+                'zone-floating-delay': { zoneId: 'zone-floating-delay', slots: [{
+                    slotId: 'slot-float-delay', type: 'floating', position: 'bottom',
+                    trigger: 'time_delay', triggerDelay: 2000,
+                    campaignId: 'camp-floating', variantId: 'v-delay',
+                    content: { imageUrl: 'https://placehold.co/180x240/e94560/ffffff?text=Float+2s', linkUrl: '#' },
+                }]},
+                'zone-floating-scroll': { zoneId: 'zone-floating-scroll', slots: [{
+                    slotId: 'slot-float-scroll', type: 'floating', position: 'bottom',
+                    trigger: 'scroll', triggerScrollPct: 40,
+                    campaignId: 'camp-floating', variantId: 'v-scroll',
+                    content: { imageUrl: 'https://placehold.co/180x240/42b883/ffffff?text=Float+Scroll+40%25', linkUrl: '#' },
+                }]},
+                'zone-floating-exit': { zoneId: 'zone-floating-exit', slots: [{
+                    slotId: 'slot-float-exit', type: 'floating', position: 'bottom',
+                    trigger: 'exit_intent',
+                    campaignId: 'camp-floating', variantId: 'v-exit',
+                    content: { imageUrl: 'https://placehold.co/180x240/1a1a2e/ffffff?text=Float+Exit', linkUrl: '#' },
+                }]},
+            }
+
+            // XHR interceptor — ส่ง mock config ตาม zoneId
+            ;(function patchAxios() {
+                const origOpen = XMLHttpRequest.prototype.open
+                const origSend = XMLHttpRequest.prototype.send
+                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                    this._mockUrl = url; return origOpen.call(this, method, url, ...rest)
+                }
+                XMLHttpRequest.prototype.send = function (body) {
+                    const url = this._mockUrl || ''
+                    if (url.includes('/ads/v1/zones/') && url.includes('/config')) {
+                        const zoneMatch = url.match(/\/zones\/([^/]+)\/config/)
+                        const zoneId = zoneMatch ? zoneMatch[1] : ''
+                        const mockData = window.__ADS_MOCK_CONFIGS__[zoneId]
+                            || { zoneId, slots: [] }
+                        const self = this
+                        setTimeout(() => {
+                            Object.defineProperty(self, 'status',       { get: () => 200 })
+                            Object.defineProperty(self, 'readyState',   { get: () => 4 })
+                            Object.defineProperty(self, 'responseText', { get: () => JSON.stringify(mockData) })
+                            Object.defineProperty(self, 'response',     { get: () => JSON.stringify(mockData) })
+                            if (typeof self.onreadystatechange === 'function') self.onreadystatechange()
+                            if (typeof self.onload === 'function') self.onload()
+                        }, 80)
+                        return
+                    }
+                    if (url.includes('/ads/v1/events')) {
+                        setTimeout(() => { if (typeof this.onload === 'function') this.onload() }, 10)
+                        return
+                    }
+                    return origSend.call(this, body)
+                }
+            })()
+        </script>
+
+        <!-- ═══════════════════════════════════════════════
+             PAGE LAYOUT
+        ═══════════════════════════════════════════════ -->
         <div class="page-header">
             <h1>AdsInjector Mock Playground</h1>
             <span class="badge">MOCK</span>
         </div>
 
         <div class="controls">
-            <label>Reload ads:</label>
-            <button class="btn" onclick="location.reload()">🔄 Reload Page</button>
-            <button class="btn" onclick="clearFrequencyCap()">🗑 Clear Frequency Cap</button>
-            <button class="btn" onclick="document.querySelector('.log-panel').innerHTML = ''">
-                🧹 Clear Log
-            </button>
+            <button class="btn" onclick="location.reload()">🔄 Reload</button>
+            <button class="btn" onclick="clearAllAds()">🗑 Clear All Ads</button>
+            <button class="btn" onclick="clearFrequencyCap()">♻️ Reset Frequency Cap</button>
+            <button class="btn" onclick="document.getElementById('log-panel').innerHTML='<div class=\'log-line system\'>[cleared]</div>'">🧹 Clear Log</button>
+            <span style="margin-left:8px;color:#999;font-size:11px;">Consent:</span>
+            <span id="consent-status-badge" class="consent-status denied">DENIED</span>
         </div>
 
-        <!-- Sticky Top mount -->
-        <div id="ads-mount-top"></div>
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showTab('banner')">🖼 Banner</button>
+            <button class="tab-btn" onclick="showTab('popup')">🎯 Popup</button>
+            <button class="tab-btn" onclick="showTab('inline')">📌 Inline</button>
+            <button class="tab-btn" onclick="showTab('sticky')">📏 Sticky Bar</button>
+            <button class="tab-btn" onclick="showTab('floating')">💬 Floating</button>
+        </div>
 
-        <div class="content-area">
-            <div class="article-card">
-                <h2>บทความตัวอย่าง</h2>
-                <p>
-                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Vite + Vue 3 IIFE CDN
-                    Widget สำหรับ inject Ads / Content ลงในเว็บไซต์ที่ใช้ Vue 2, Vue 3 หรือ Plain
-                    HTML ก็ได้
-                </p>
+        <!-- Consent Banner -->
+        <div class="consent-banner" id="consent-banner">
+            <p>🍪 ทดสอบ Consent Flow<br><small style="color:#999" id="consent-gtm-label">analytics_storage, ad_storage</small></p>
+            <button class="btn-accept" onclick="grantConsent()">ยอมรับ</button>
+            <button class="btn-deny" onclick="denyConsent()">ปฏิเสธ</button>
+        </div>
 
-                <div id="target-before">
-                    🎯 นี่คือ
-                    <code>#target-before</code>
-                    — Banner Ad จะถูก inject
-                    <strong>หลัง</strong>
-                    element นี้
+        <!-- ══════════════════════════════════════
+             TAB: BANNER
+        ══════════════════════════════════════ -->
+        <div id="tab-banner" class="tab-content active">
+            <div class="tab-intro">
+                <h2>🖼 Banner</h2>
+                <p>แสดง image + link พร้อม close button — ทดสอบทุก position ที่รองรับ</p>
+            </div>
+
+            <!-- Case 1: top -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 1 — inject ที่ top ของ container</h3>
+                        <div class="case-meta">
+                            <span class="tag type">banner</span>
+                            <span class="tag pos">position: top</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
                 </div>
-
-                <p>
-                    Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut
-                    aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in
-                    voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                </p>
-                <p>
-                    Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia
-                    deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet consectetur
-                    adipiscing elit sed do eiusmod tempor.
-                </p>
-                <p>↓ Scroll ลงมา 30% เพื่อดู Inline Ad</p>
+                <div id="banner-case-1-body" class="case-body">
+                    <p class="case-desc">Ad จะถูก inject ที่ <code>top</code> ของ <code>#banner-case-1-body</code> — ปรากฏเหนือ content</p>
+                    <div id="mount-banner-1" style="min-height:1px"></div>
+                    <p class="article-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                    <p class="article-text">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+                </div>
             </div>
 
-            <!-- Inline Ad mount zone -->
-            <div id="ads-mount-inline"></div>
-
-            <div class="article-card">
-                <h2>เนื้อหาส่วนที่สอง</h2>
-                <p>
-                    Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium
-                    doloremque laudantium totam rem aperiam eaque ipsa quae ab illo inventore
-                    veritatis et quasi architecto beatae.
-                </p>
-                <p>
-                    Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit sed
-                    quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
-                </p>
-                <p>
-                    Neque porro quisquam est qui dolorem ipsum quia dolor sit amet consectetur
-                    adipisci velit sed quia non numquam eius modi tempora incidunt ut labore et
-                    dolore magnam aliquam.
-                </p>
+            <!-- Case 2: bottom -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 2 — inject ที่ bottom ของ container</h3>
+                        <div class="case-meta">
+                            <span class="tag type">banner</span>
+                            <span class="tag pos">position: bottom</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="banner-case-2-body" class="case-body">
+                    <p class="case-desc">Ad จะถูก inject ที่ <code>bottom</code> ของ <code>#banner-case-2-body</code> — ปรากฏใต้ content</p>
+                    <p class="article-text">Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+                    <p class="article-text">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia.</p>
+                    <div id="mount-banner-2" style="min-height:1px"></div>
+                </div>
             </div>
 
-            <div class="article-card">
-                <h2>สรุป</h2>
-                <p>Floating Ad จะปรากฏที่มุมล่างขวาหลังจาก 3 วินาที, Popup จะปรากฏหลัง 2 วินาที</p>
-                <p style="color: #999; font-size: 13px">ดู Event Log ที่ bar ด้านล่างสุดของหน้า</p>
+            <!-- Case 3: after element -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 3 — inject หลัง element (position: after)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">banner</span>
+                            <span class="tag pos">position: after</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Ad จะถูก inject <strong>หลัง</strong> <code>#banner-target-after</code> ทันที</p>
+                    <p class="article-text">เนื้อหาก่อน target element</p>
+                    <div id="banner-target-after" class="inject-target">
+                        🎯 <code>#banner-target-after</code> — Ad จะปรากฏ <strong>ใต้</strong>นี้
+                    </div>
+                    <p class="article-text">เนื้อหาหลัง target element — Ad จะอยู่ระหว่างสองย่อหน้านี้</p>
+                    <div id="mount-banner-3" style="min-height:1px"></div>
+                </div>
             </div>
 
-            <div style="height: 200px"></div>
+            <!-- Case 4: before element -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 4 — inject ก่อน element (position: before)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">banner</span>
+                            <span class="tag pos">position: before</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Ad จะถูก inject <strong>ก่อน</strong> <code>#banner-target-before</code></p>
+                    <p class="article-text">เนื้อหาก่อน target — Ad จะปรากฏระหว่างย่อหน้านี้กับ element ด้านล่าง</p>
+                    <div id="banner-target-before" class="inject-target">
+                        🎯 <code>#banner-target-before</code> — Ad จะปรากฏ <strong>เหนือ</strong>นี้
+                    </div>
+                    <p class="article-text">เนื้อหาหลัง target element</p>
+                    <div id="mount-banner-4" style="min-height:1px"></div>
+                </div>
+            </div>
+
+            <!-- Case 5: replace element -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 5 — แทนที่ element (position: replace)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">banner</span>
+                            <span class="tag pos">position: replace</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Ad จะ <strong>แทนที่</strong> <code>#banner-target-replace</code> ทั้ง element — ใช้สำหรับ swap content</p>
+                    <p class="article-text">เนื้อหาก่อน target</p>
+                    <div id="banner-target-replace" class="inject-target">
+                        🎯 <code>#banner-target-replace</code> — element นี้จะถูกแทนที่ด้วย Ad
+                    </div>
+                    <p class="article-text">เนื้อหาหลัง target</p>
+                    <div id="mount-banner-5" style="min-height:1px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             TAB: POPUP
+        ══════════════════════════════════════ -->
+        <div id="tab-popup" class="tab-content">
+            <div class="tab-intro">
+                <h2>🎯 Popup</h2>
+                <p>Overlay modal กลางหน้าจอ — ทดสอบทุก trigger type ทีละ case</p>
+            </div>
+
+            <!-- Case 1: immediate -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 1 — แสดงทันที (trigger: immediate)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">popup</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Popup จะโผล่ทันทีที่กด Test — ไม่มี delay</p>
+                    <button class="btn-test" onclick="runCase('popup-immediate', 'mount-popup-1')">▶ Test Case 1</button>
+                    <button class="btn-reset" onclick="resetCase('mount-popup-1')">✕ Reset</button>
+                    <div id="mount-popup-1" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Case 2: time_delay -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 2 — แสดงหลัง 3 วินาที (trigger: time_delay)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">popup</span>
+                            <span class="tag trigger">time_delay</span>
+                            <span class="tag delay">3,000ms</span>
+                            <span class="tag freq">maxShows: 3 / 5min</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้วรอ 3 วินาที — Popup จะโผล่อัตโนมัติ มี frequency cap 3 ครั้ง/5 นาที</p>
+                    <button class="btn-test" onclick="runCase('popup-delay', 'mount-popup-2')">▶ Test Case 2</button>
+                    <button class="btn-reset" onclick="resetCase('mount-popup-2')">✕ Reset</button>
+                    <div id="mount-popup-2" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Case 3: exit_intent -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 3 — แสดงตอน mouse ออกจากหน้า (trigger: exit_intent)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">popup</span>
+                            <span class="tag trigger">exit_intent</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้วขยับ mouse ออกนอกหน้าต่าง Browser (ขึ้น) — Popup จะโผล่</p>
+                    <button class="btn-test" onclick="runCase('popup-exit', 'mount-popup-3')">▶ Test Case 3</button>
+                    <button class="btn-reset" onclick="resetCase('mount-popup-3')">✕ Reset</button>
+                    <div id="mount-popup-3" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             TAB: INLINE
+        ══════════════════════════════════════ -->
+        <div id="tab-inline" class="tab-content">
+            <div class="tab-intro">
+                <h2>📌 Inline</h2>
+                <p>Ad ฝังในเนื้อหาหน้า — ทดสอบ trigger แบบ immediate และ scroll</p>
+            </div>
+
+            <!-- Case 1: immediate -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 1 — แสดงทันที (trigger: immediate)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">inline</span>
+                            <span class="tag pos">position: bottom</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Inline ad โผล่ที่ bottom ของ mount zone ทันที ไม่ต้อง scroll</p>
+                    <p class="article-text">เนื้อหาบทความ — Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                    <div id="inline-mount-1" class="inject-target">
+                        📌 <code>#inline-mount-1</code> — Inline Ad จะ inject ที่นี่
+                    </div>
+                    <p class="article-text">เนื้อหาต่อจาก inline ad</p>
+                    <div id="mount-inline-1" style="min-height:1px"></div>
+                </div>
+            </div>
+
+            <!-- Case 2: scroll 30% -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 2 — แสดงตอน scroll 30% (trigger: scroll)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">inline</span>
+                            <span class="tag pos">position: bottom</span>
+                            <span class="tag trigger">scroll</span>
+                            <span class="tag delay">triggerScrollPct: 30%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Scroll หน้าลงมา 30% — Ad จะโผล่ใน mount zone ด้านล่าง</p>
+                    <p class="article-text">Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>
+                    <p class="article-text">Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.</p>
+                    <div id="inline-mount-2" class="inject-target">
+                        📌 <code>#inline-mount-2</code> — Inline Ad จะปรากฏหลัง scroll 30%
+                    </div>
+                    <div id="mount-inline-2" style="min-height:1px"></div>
+                </div>
+            </div>
+
+            <!-- Case 3: scroll 60% -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 3 — แสดงตอน scroll 60% (trigger: scroll)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">inline</span>
+                            <span class="tag pos">position: bottom</span>
+                            <span class="tag trigger">scroll</span>
+                            <span class="tag delay">triggerScrollPct: 60%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="article-text">At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium.</p>
+                    <p class="article-text">Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus.</p>
+                    <p class="article-text">Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe.</p>
+                    <div id="inline-mount-3" class="inject-target">
+                        📌 <code>#inline-mount-3</code> — Inline Ad จะปรากฏหลัง scroll 60%
+                    </div>
+                    <div id="mount-inline-3" style="min-height:1px"></div>
+                </div>
+            </div>
+
+            <div class="spacer"></div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             TAB: STICKY BAR
+        ══════════════════════════════════════ -->
+        <div id="tab-sticky" class="tab-content">
+            <div class="tab-intro">
+                <h2>📏 Sticky Bar</h2>
+                <p>แถบโฆษณา fixed ติดขอบหน้าจอ — ทดสอบ position top/bottom และ trigger</p>
+            </div>
+
+            <!-- Case 1: top, immediate -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 1 — ติดบนสุดของหน้า (position: top, immediate)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">sticky_bar</span>
+                            <span class="tag pos">position: top</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Sticky bar โผล่ติดขอบบน viewport ทันที — กด Close เพื่อซ่อน</p>
+                    <button class="btn-test" onclick="runCase('sticky-top', 'mount-sticky-1')">▶ Test Case 1</button>
+                    <button class="btn-reset" onclick="resetCase('mount-sticky-1')">✕ Reset</button>
+                    <div id="mount-sticky-1" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Case 2: bottom, immediate -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 2 — ติดล่างสุดของหน้า (position: bottom, immediate)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">sticky_bar</span>
+                            <span class="tag pos">position: bottom</span>
+                            <span class="tag trigger">immediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">Sticky bar โผล่ติดขอบล่าง viewport — จะซ้อนทับกับ Event Log panel ด้านล่างสุด</p>
+                    <button class="btn-test" onclick="runCase('sticky-bottom', 'mount-sticky-2')">▶ Test Case 2</button>
+                    <button class="btn-reset" onclick="resetCase('mount-sticky-2')">✕ Reset</button>
+                    <div id="mount-sticky-2" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Case 3: time_delay -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 3 — ติดบนหลัง 3 วินาที (trigger: time_delay)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">sticky_bar</span>
+                            <span class="tag pos">position: top</span>
+                            <span class="tag trigger">time_delay</span>
+                            <span class="tag delay">3,000ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้วรอ 3 วินาที — Sticky bar จะ slide เข้ามาที่ขอบบน</p>
+                    <button class="btn-test" onclick="runCase('sticky-delay', 'mount-sticky-3')">▶ Test Case 3</button>
+                    <button class="btn-reset" onclick="resetCase('mount-sticky-3')">✕ Reset</button>
+                    <div id="mount-sticky-3" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             TAB: FLOATING
+        ══════════════════════════════════════ -->
+        <div id="tab-floating" class="tab-content">
+            <div class="tab-intro">
+                <h2>💬 Floating</h2>
+                <p>Ad ลอยที่มุมหน้าจอ — ทดสอบ trigger: time_delay, scroll, exit_intent</p>
+            </div>
+
+            <!-- Case 1: time_delay -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 1 — โผล่หลัง 2 วินาที (trigger: time_delay)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">floating</span>
+                            <span class="tag trigger">time_delay</span>
+                            <span class="tag delay">2,000ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้วรอ 2 วินาที — Floating ad โผล่มุมล่างขวา</p>
+                    <button class="btn-test" onclick="runCase('floating-delay', 'mount-float-1')">▶ Test Case 1</button>
+                    <button class="btn-reset" onclick="resetCase('mount-float-1')">✕ Reset</button>
+                    <div id="mount-float-1" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Case 2: scroll -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 2 — โผล่ตอน scroll 40% (trigger: scroll)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">floating</span>
+                            <span class="tag trigger">scroll</span>
+                            <span class="tag delay">triggerScrollPct: 40%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้ว scroll หน้าลงมา 40% — Floating ad จะปรากฏ</p>
+                    <button class="btn-test" onclick="runCase('floating-scroll', 'mount-float-2')">▶ Test Case 2</button>
+                    <button class="btn-reset" onclick="resetCase('mount-float-2')">✕ Reset</button>
+                    <p class="article-text" style="margin-top:12px">Scroll content ตัวอย่าง — Nam libero tempore, cum soluta nobis.</p>
+                    <p class="article-text">At vero eos et accusamus et iusto odio dignissimos ducimus.</p>
+                    <p class="article-text">Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe.</p>
+                    <div id="mount-float-2" style="min-height:1px"></div>
+                    <div class="spacer"></div>
+                </div>
+            </div>
+
+            <!-- Case 3: exit_intent -->
+            <div class="case-section">
+                <div class="case-header">
+                    <div>
+                        <h3>Case 3 — โผล่ตอน mouse ออกนอกหน้าต่าง (trigger: exit_intent)</h3>
+                        <div class="case-meta">
+                            <span class="tag type">floating</span>
+                            <span class="tag trigger">exit_intent</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-body">
+                    <p class="case-desc">กด Test แล้วขยับ mouse ออกนอกหน้าต่าง Browser (ขึ้น) — Floating ad โผล่ที่มุมล่างขวา</p>
+                    <button class="btn-test" onclick="runCase('floating-exit', 'mount-float-3')">▶ Test Case 3</button>
+                    <button class="btn-reset" onclick="resetCase('mount-float-3')">✕ Reset</button>
+                    <div id="mount-float-3" style="min-height:1px; margin-top:12px"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Event Log Panel -->
         <div class="log-panel" id="log-panel">
-            <div class="log-line" style="color: #fff; opacity: 0.5">— Ad Event Log —</div>
+            <div class="log-line system">— Ad Event Log — กด tab เพื่อเริ่มทดสอบ —</div>
         </div>
 
-        <!-- Load built widget -->
+        <!-- Widget -->
         <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
 
         <script>
-            // ====================================================
-            // Patch axios ด้วย mock interceptor
-            // ====================================================
-            ;(function patchAxios() {
-                // รอให้ widget โหลด axios เข้า window ก่อน
-                // เราต้อง patch ก่อนที่ AdsInjector.inject จะ call fetchConfig
-                // วิธีที่ง่ายที่สุดคือ override XMLHttpRequest / fetch ก่อน inject
+            // ── Tracking helpers ───────────────────────────────────────────
+            const EVENT_ICONS = {
+                impression:'👁', view:'✅', click:'🖱', close:'✕',
+                hover:'🖐', view_duration:'⏱', conversion:'💰',
+                frequency_capped:'🚫', error:'⚠️', system:'ℹ️',
+            }
 
-                const origOpen = XMLHttpRequest.prototype.open
-                const origSend = XMLHttpRequest.prototype.send
-
-                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                    this._mockUrl = url
-                    return origOpen.call(this, method, url, ...rest)
-                }
-
-                XMLHttpRequest.prototype.send = function (body) {
-                    const url = this._mockUrl || ''
-
-                    if (url.includes('/ads/v1/zones/') && url.includes('/config')) {
-                        // intercept!
-                        const self = this
-                        setTimeout(() => {
-                            Object.defineProperty(self, 'status', { get: () => 200 })
-                            Object.defineProperty(self, 'readyState', { get: () => 4 })
-                            Object.defineProperty(self, 'responseText', {
-                                get: () => JSON.stringify(window.__ADS_MOCK_CONFIG__),
-                            })
-                            Object.defineProperty(self, 'response', {
-                                get: () => JSON.stringify(window.__ADS_MOCK_CONFIG__),
-                            })
-                            if (typeof self.onreadystatechange === 'function')
-                                self.onreadystatechange()
-                            if (typeof self.onload === 'function') self.onload()
-                        }, 80)
-                        return
-                    }
-
-                    if (url.includes('/ads/v1/events')) {
-                        // swallow track event silently
-                        setTimeout(() => {
-                            if (typeof this.onload === 'function') this.onload()
-                        }, 10)
-                        return
-                    }
-
-                    return origSend.call(this, body)
-                }
-            })()
-
-            // ====================================================
-            // Logger
-            // ====================================================
             function log(type, slotId, extra) {
                 const panel = document.getElementById('log-panel')
                 const ts = new Date().toLocaleTimeString('th-TH')
                 const div = document.createElement('div')
                 div.className = `log-line ${type}`
-                const icons = { impression: '👁', click: '🖱', close: '✕', error: '⚠️' }
-                div.textContent = `[${ts}] ${icons[type] || '•'} ${type.toUpperCase()}  slot: ${slotId}${extra ? '  ' + extra : ''}`
+                div.textContent = `[${ts}] ${EVENT_ICONS[type]||'•'} ${type.toUpperCase().padEnd(16)} slot:${slotId}${extra ? '  '+extra : ''}`
                 panel.appendChild(div)
                 panel.scrollTop = panel.scrollHeight
             }
 
-            // ====================================================
-            // Inject widget
-            // ====================================================
-            AdsInjector.inject('#ads-mount-top', {
-                baseUrl: 'https://api-mock.local',
-                clientId: 'demo-client',
-                zoneId: 'homepage-hero',
-                onEvent: (e) => log(e.type, e.slotId),
-            })
-
-            // ====================================================
-            // Utility
-            // ====================================================
-            function clearFrequencyCap() {
-                Object.keys(localStorage)
-                    .filter((k) => k.startsWith('ads_fc_'))
-                    .forEach((k) => localStorage.removeItem(k))
-                alert('Frequency cap cleared! กด Reload เพื่อดู popup อีกครั้ง')
+            function pushToDataLayer(e) {
+                window.dataLayer = window.dataLayer || []
+                window.dataLayer.push({
+                    event: `ads_${e.type}`,
+                    ads_type: e.type, ads_slot_id: e.slotId, ads_zone_id: e.zoneId,
+                    ads_timestamp: e.timestamp, ads_page_url: e.meta?.pageUrl,
+                    ads_session_id: e.meta?.sessionId, ads_ad_type: e.meta?.adType,
+                    ads_trigger: e.meta?.trigger, ads_campaign_id: e.meta?.campaignId,
+                    ads_variant_id: e.meta?.variantId, ads_utm_source: e.meta?.utmSource,
+                    ads_scroll_depth_pct: e.meta?.scrollDepthPct,
+                    ads_viewport_width: e.meta?.viewportWidth,
+                    ads_time_on_page_ms: e.meta?.timeOnPageMs,
+                    ads_visible_duration_ms: e.meta?.visibleDurationMs,
+                })
             }
+
+            function onEvent(e) {
+                const extra = e.meta?.visibleDurationMs ? `duration:${e.meta.visibleDurationMs}ms`
+                    : e.meta?.scrollDepthPct != null ? `scroll:${e.meta.scrollDepthPct}%` : ''
+                log(e.type, e.slotId, extra)
+                pushToDataLayer(e)
+            }
+
+            // ── Consent ────────────────────────────────────────────────────
+            function grantConsent() {
+                window.dataLayer.push(['consent', 'update', {
+                    ad_storage:'granted', ad_user_data:'granted',
+                    ad_personalization:'granted', analytics_storage:'granted',
+                }])
+                document.getElementById('consent-banner').style.display = 'none'
+                document.getElementById('consent-status-badge').textContent = 'GRANTED'
+                document.getElementById('consent-status-badge').className = 'consent-status granted'
+                log('system', '—', '✅ Consent granted')
+            }
+            function denyConsent() {
+                window.dataLayer.push(['consent', 'update', {
+                    ad_storage:'denied', ad_user_data:'denied',
+                    ad_personalization:'denied', analytics_storage:'denied',
+                }])
+                document.getElementById('consent-banner').style.display = 'none'
+                log('system', '—', '🚫 Consent denied')
+            }
+
+            // ── Tab navigation ─────────────────────────────────────────────
+            const initializedTabs = new Set()
+
+            function showTab(name) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'))
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'))
+                document.getElementById(`tab-${name}`).classList.add('active')
+                event.currentTarget.classList.add('active')
+                if (!initializedTabs.has(name)) {
+                    initTab(name)
+                    initializedTabs.add(name)
+                }
+            }
+
+            // ── Resolve inject fn (Rollup IIFE wraps named exports under .default) ──
+            const _inject = (AdsInjector.default || AdsInjector).inject.bind(AdsInjector.default || AdsInjector)
+
+            // ── Playground Config (อ่านจาก env.js หรือ default) ───────────
+            const CFG = window.PLAYGROUND_CONFIG || {}
+
+            // ── Init per tab (auto-init cases) ─────────────────────────────
+            function makeOpts(zoneId) {
+                return {
+                    baseUrl:  CFG.baseUrl  || 'https://api-mock.local',
+                    clientId: CFG.clientId || 'demo-client',
+                    zoneId,
+                    onEvent,
+                }
+            }
+
+            function initTab(name) {
+                if (name === 'banner') {
+                    _inject('#mount-banner-1', makeOpts('zone-banner-top'))
+                    _inject('#mount-banner-2', makeOpts('zone-banner-bottom'))
+                    _inject('#mount-banner-3', makeOpts('zone-banner-after'))
+                    _inject('#mount-banner-4', makeOpts('zone-banner-before'))
+                    _inject('#mount-banner-5', makeOpts('zone-banner-replace'))
+                }
+                if (name === 'inline') {
+                    _inject('#mount-inline-1', makeOpts('zone-inline-immediate'))
+                    _inject('#mount-inline-2', makeOpts('zone-inline-scroll30'))
+                    _inject('#mount-inline-3', makeOpts('zone-inline-scroll60'))
+                }
+            }
+
+            // ── Run single case (popup / sticky / floating) ────────────────
+            const caseApps = {}
+
+            function runCase(zoneId, mountId) {
+                if (caseApps[mountId]) {
+                    try { caseApps[mountId].unmount() } catch(e) {}
+                    document.getElementById(mountId).innerHTML = ''
+                }
+                _inject(`#${mountId}`, makeOpts(`zone-${zoneId}`))
+                log('system', '—', `▶ Running zone-${zoneId}`)
+            }
+
+            function resetCase(mountId) {
+                if (caseApps[mountId]) {
+                    try { caseApps[mountId].unmount() } catch(e) {}
+                }
+                document.getElementById(mountId).innerHTML = ''
+                // Remove any injected global ads (popup, sticky, floating)
+                document.querySelectorAll('[data-ads-slot]').forEach(el => el.remove())
+                log('system', '—', `✕ Reset ${mountId}`)
+            }
+
+            // ── Global utilities ───────────────────────────────────────────
+            function clearAllAds() {
+                document.querySelectorAll('[data-ads-slot]').forEach(el => el.remove())
+                log('system', '—', '🗑 All ads cleared')
+            }
+
+            function clearFrequencyCap() {
+                Object.keys(localStorage).filter(k => k.startsWith('ads_fc_')).forEach(k => localStorage.removeItem(k))
+                log('system', '—', '♻️ Frequency cap reset')
+            }
+
+            // ── Stamp config info ──────────────────────────────────────────
+            // แสดง GTM ID ที่ใช้งานจริงใน consent banner label
+            ;(function() {
+                var label = document.getElementById('consent-gtm-label')
+                if (label && CFG.gtmContainerId && CFG.gtmContainerId !== 'GTM-XXXXXXX') {
+                    label.textContent = CFG.gtmContainerId + ' — analytics_storage, ad_storage'
+                }
+                // ถ้า consentDefault = 'granted' → ซ่อน consent banner ทันที
+                if (CFG.consentDefault === 'granted') {
+                    document.getElementById('consent-banner').style.display = 'none'
+                    log('system', '—', '✅ Consent default = granted (env.js)')
+                }
+                log('system', '—', `⚙️ Config: baseUrl=${CFG.baseUrl || 'api-mock.local'} | clientId=${CFG.clientId || 'demo-client'} | mock=${CFG.useMockApi !== false}`)
+            })()
+
+            // ── Auto-init Banner tab (default active) ──────────────────────
+            initTab('banner')
+            initializedTabs.add('banner')
         </script>
     </body>
 </html>
