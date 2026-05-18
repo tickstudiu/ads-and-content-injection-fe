@@ -122,30 +122,11 @@
             const BASE_URL =
                 window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
 
-            // ── shared fetch helper ──────────────────────────────────────────
-            // return Promise<Response> และ throw เมื่อ status 4xx/5xx
-            // component แต่ละตัวเรียก fetchZoneConfig แล้วตัดสินใจเองว่าจะ inject หรือ fallback
-            function fetchZoneConfig(zoneId, clientId) {
-                var qs = clientId ? '?client_id=' + encodeURIComponent(clientId) : ''
-                var url = BASE_URL + '/ads/v1/zones/' + encodeURIComponent(zoneId) + '/config' + qs
-                return fetch(url).then(function (res) {
-                    if (!res.ok) {
-                        // 4xx / 5xx → reject พร้อม HTTP status เพื่อให้ catch จับได้ชัดเจน
-                        return res.json().catch(function () { return {} }).then(function (body) {
-                            var err = new Error('HTTP ' + res.status)
-                            err.status = res.status
-                            err.body   = body
-                            throw err
-                        })
-                    }
-                    return res.json()
-                })
-            }
-
             // ── ads-banner-injector ──────────────────────────────────────────
-            // - fetch /config ก่อนเสมอ
-            // - 4xx/5xx → showFallback = true  (widget ไม่ถูกเรียก)
-            // - 2xx     → showFallback = false, เรียก AdsInjector.inject
+            // AdsInjector จัดการ fetch เอง — playground react ผ่าน onEvent:
+            //   impression → ad render สำเร็จ, ซ่อน fallback
+            //   error      → fetch/render ล้มเหลว, คง fallback ไว้
+            //                ถ้าไม่มี fallbackImage ให้ซ่อน component ทั้งหมด
             Vue.component('ads-banner-injector', {
                 props: {
                     zoneId:        { type: String, required: true },
@@ -154,14 +135,17 @@
                     fallbackLink:  { type: String, default: '#' },
                 },
                 template: `
-                    <div ref="ads">
-                        <div class="com7-ads-banner" v-if="showFallback">
+                    <div>
+                        <!-- fallback: แสดงระหว่างรอ และเมื่อ error -->
+                        <div class="com7-ads-banner" v-if="showFallback && fallbackImage">
                             <a :href="fallbackLink" target="_blank" rel="noopener">
                                 <img :src="fallbackImage" alt="Advertisement" />
                             </a>
                             <button class="com7-ads-banner__close" aria-label="Close ad"
                                 @click="showFallback = false">×</button>
                         </div>
+                        <!-- inject target: AdsInjector เขียน ad ลงที่นี่ -->
+                        <div ref="adsTarget"></div>
                     </div>
                 `,
                 data() {
@@ -169,35 +153,27 @@
                 },
                 mounted() {
                     var self = this
-                    fetchZoneConfig(this.zoneId, this.clientId)
-                        .then(function () {
-                            // API ตอบ 2xx → ให้ widget inject ทับ
-                            self.showFallback = false
-                            var A = AdsInjector?.default || AdsInjector
-                            A.inject(self.$refs.ads, {
-                                baseUrl:  BASE_URL,
-                                clientId: self.clientId,
-                                zoneId:   self.zoneId,
-                                onEvent:  function (e) {
-                                    // ถ้า widget แจ้ง error ทีหลัง ให้กลับมาแสดง fallback
-                                    if (e.type === 'error') self.showFallback = true
-                                    console.log('[ads-banner-injector]', e)
-                                },
-                            })
-                        })
-                        .catch(function (err) {
-                            // 4xx / 5xx / network error → คง fallback ไว้
-                            console.warn(
-                                '[ads-banner-injector] zone "' + self.zoneId + '" fetch failed ' +
-                                '(status: ' + (err.status || 'network') + ') — showing fallback'
-                            )
-                        })
+                    var A = AdsInjector?.default || AdsInjector
+                    A.inject(this.$refs.adsTarget, {
+                        baseUrl:  BASE_URL,
+                        clientId: this.clientId,
+                        zoneId:   this.zoneId,
+                        onEvent: function (e) {
+                            if (e.type === 'impression') {
+                                self.showFallback = false
+                            }
+                            if (e.type === 'error') {
+                                if (!self.fallbackImage) self.$el.style.display = 'none'
+                                // มี fallbackImage → showFallback ยังเป็น true อยู่แล้ว
+                            }
+                            console.log('[ads-banner-injector ' + self.zoneId + ']', e)
+                        },
+                    })
                 },
             })
 
             // ── ads-inline-injector ──────────────────────────────────────────
-            // เหมือน ads-banner-injector ทุกอย่าง แต่ใช้ wrapper .com7-ads-inline
-            // และไม่มีปุ่มปิด (inline ad ไม่ dismissible โดย default)
+            // เหมือน ads-banner-injector แต่ใช้ .com7-ads-inline และไม่มีปุ่มปิด
             Vue.component('ads-inline-injector', {
                 props: {
                     zoneId:        { type: String, required: true },
@@ -206,12 +182,13 @@
                     fallbackLink:  { type: String, default: '#' },
                 },
                 template: `
-                    <div ref="ads">
-                        <div class="com7-ads-inline" v-if="showFallback">
+                    <div>
+                        <div class="com7-ads-inline" v-if="showFallback && fallbackImage">
                             <a :href="fallbackLink" target="_blank" rel="noopener">
                                 <img :src="fallbackImage" alt="Advertisement" />
                             </a>
                         </div>
+                        <div ref="adsTarget"></div>
                     </div>
                 `,
                 data() {
@@ -219,26 +196,21 @@
                 },
                 mounted() {
                     var self = this
-                    fetchZoneConfig(this.zoneId, this.clientId)
-                        .then(function () {
-                            self.showFallback = false
-                            var A = AdsInjector?.default || AdsInjector
-                            A.inject(self.$refs.ads, {
-                                baseUrl:  BASE_URL,
-                                clientId: self.clientId,
-                                zoneId:   self.zoneId,
-                                onEvent:  function (e) {
-                                    if (e.type === 'error') self.showFallback = true
-                                    console.log('[ads-inline-injector]', e)
-                                },
-                            })
-                        })
-                        .catch(function (err) {
-                            console.warn(
-                                '[ads-inline-injector] zone "' + self.zoneId + '" fetch failed ' +
-                                '(status: ' + (err.status || 'network') + ') — showing fallback'
-                            )
-                        })
+                    var A = AdsInjector?.default || AdsInjector
+                    A.inject(this.$refs.adsTarget, {
+                        baseUrl:  BASE_URL,
+                        clientId: this.clientId,
+                        zoneId:   this.zoneId,
+                        onEvent: function (e) {
+                            if (e.type === 'impression') {
+                                self.showFallback = false
+                            }
+                            if (e.type === 'error') {
+                                if (!self.fallbackImage) self.$el.style.display = 'none'
+                            }
+                            console.log('[ads-inline-injector ' + self.zoneId + ']', e)
+                        },
+                    })
                 },
             })
 

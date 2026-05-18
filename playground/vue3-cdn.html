@@ -69,15 +69,15 @@
                 <span class="ad-zone__label">Ad · Top Banner</span>
                 <span class="ad-zone__hint">zone: homepage-hero</span>
                 <div id="ad-top">
-                    <div class="com7-ads-banner" data-mock="true">
-                        <a href="https://example.com/promo-top" target="_blank" rel="noopener">
-                            <img
-                                src="https://placehold.co/970x120/42b883/ffffff?text=VUE+3+%E2%80%94+TOP+BANNER+970x120"
-                                alt="Top Advertisement"
-                            />
-                        </a>
-                        <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                    <div data-fallback>
+                        <div class="com7-ads-banner">
+                            <a href="https://example.com/promo-top" target="_blank" rel="noopener">
+                                <img src="https://placehold.co/970x120/42b883/ffffff?text=VUE+3+%E2%80%94+TOP+BANNER+970x120" alt="Top Advertisement" />
+                            </a>
+                            <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                        </div>
                     </div>
+                    <div data-target></div>
                 </div>
             </div>
 
@@ -92,15 +92,14 @@
                 <span class="ad-zone__label">Ad · Inline</span>
                 <span class="ad-zone__hint">zone: article-inline</span>
                 <div id="ad-inline">
-                    <div class="com7-ads-banner" data-mock="true">
-                        <a href="https://example.com/promo-inline" target="_blank" rel="noopener">
-                            <img
-                                src="https://placehold.co/728x150/8b5cf6/ffffff?text=VUE+3+%E2%80%94+INLINE+728x150"
-                                alt="Inline Advertisement"
-                            />
-                        </a>
-                        <button class="com7-ads-banner__close" aria-label="Close ad">×</button>
+                    <div data-fallback>
+                        <div class="com7-ads-inline">
+                            <a href="https://example.com/promo-inline" target="_blank" rel="noopener">
+                                <img src="https://placehold.co/728x150/8b5cf6/ffffff?text=VUE+3+%E2%80%94+INLINE+728x150" alt="Inline Advertisement" />
+                            </a>
+                        </div>
                     </div>
+                    <div data-target></div>
                 </div>
             </div>
 
@@ -109,7 +108,8 @@
                 <span class="ad-zone__label">Ad · Bento Grid</span>
                 <span class="ad-zone__hint">zone: homepage-bento</span>
                 <div id="ad-bento">
-                    <div class="ad-bento-grid" data-mock="true">
+                    <div data-fallback>
+                    <div class="ad-bento-grid">
                         <div class="ad-bento-grid__item--hero">
                             <div class="ad-bento ad-bento--hero">
                                 <img class="ad-bento__img" src="https://placehold.co/960x300/1a1a2e/ffffff?text=HERO+960x300" alt="Summer Sale 2026" />
@@ -180,21 +180,20 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </div><!-- /.ad-bento-grid -->
+                    </div><!-- /[data-fallback] -->
+                    <div data-target></div>
+                </div><!-- /#ad-bento -->
+            </div><!-- /.ad-zone -->
 
             <p>เนื้อหาส่วนล่างหลัง inline ad — ทดสอบ layout จริง</p>
         </div>
 
         <script>
+            // ปุ่มปิด fallback banner (delegate — ใช้ได้กับทุก .com7-ads-banner__close)
             document.addEventListener('click', (e) => {
                 if (e.target.matches('.com7-ads-banner__close')) {
-                    const banner = e.target.closest('.com7-ads-banner[data-mock]')
-                    if (banner) {
-                        banner.remove()
-                        console.log('[Mock Ad] closed')
-                    }
+                    e.target.closest('[data-fallback]')?.remove()
                 }
             })
         </script>
@@ -203,53 +202,41 @@
         <script src="/playground/env.js"></script>
         <script src="/dist/com7-ads-inject-widget-v1.0.0.js"></script>
         <script>
-            const baseUrl =
-                window.PLAYGROUND_CONFIG?.baseUrl || 'https://ads-n-content.free.beeceptor.com'
+            const baseUrl  = window.PLAYGROUND_CONFIG?.baseUrl  || 'https://ads-n-content.free.beeceptor.com'
             const clientId = window.PLAYGROUND_CONFIG?.clientId || 'demo-client'
+            const A        = AdsInjector?.default || AdsInjector
 
-            // ── shared fetch helper ──────────────────────────────────────────
-            // 4xx/5xx → reject พร้อม err.status เพื่อให้ catch แยก case ได้ชัด
-            function fetchZoneConfig(zoneId, clientId) {
-                const qs  = clientId ? '?client_id=' + encodeURIComponent(clientId) : ''
-                const url = baseUrl + '/ads/v1/zones/' + encodeURIComponent(zoneId) + '/config' + qs
-                return fetch(url).then((res) => {
-                    if (!res.ok) {
-                        return res.json().catch(() => ({})).then((body) => {
-                            const err = new Error('HTTP ' + res.status)
-                            err.status = res.status
-                            err.body   = body
-                            throw err
-                        })
-                    }
-                    return res.json()
+            // ── mountAd ──────────────────────────────────────────────────────
+            // AdsInjector จัดการ fetch เอง — เราแค่ react ผ่าน onEvent
+            //   impression → ซ่อน fallback, แสดง inject target
+            //   error      → คง fallback ไว้; ถ้าไม่มี fallback ให้ซ่อน .ad-zone ทั้งก้อน
+            function mountAd(containerId, zoneId, label) {
+                const container  = document.getElementById(containerId)
+                const fallbackEl = container.querySelector('[data-fallback]')
+                const targetEl   = container.querySelector('[data-target]')
+
+                A.inject(targetEl, {
+                    baseUrl,
+                    clientId,
+                    zoneId,
+                    onEvent(e) {
+                        if (e.type === 'impression') {
+                            fallbackEl?.remove()
+                        }
+                        if (e.type === 'error') {
+                            if (!fallbackEl?.children.length) {
+                                container.closest('.ad-zone').style.display = 'none'
+                            }
+                            // มี fallback → ยังแสดงอยู่แล้ว ไม่ต้องทำอะไร
+                        }
+                        console.log('[' + label + ']', e)
+                    },
                 })
             }
 
-            // ── inject helper — pre-fetch ก่อน ถ้า 4xx ให้ mock อยู่ต่อ ──────
-            function injectAd(selector, zoneId, label) {
-                const A = AdsInjector?.default || AdsInjector
-                fetchZoneConfig(zoneId, clientId)
-                    .then(() => {
-                        A.inject(selector, {
-                            baseUrl,
-                            clientId,
-                            zoneId,
-                            onEvent: (e) => console.log('[' + label + ']', e),
-                        })
-                    })
-                    .catch((err) => {
-                        console.warn(
-                            '[' + label + '] fetch failed' +
-                            ' (status: ' + (err.status || 'network') + ') — showing fallback'
-                        )
-                    })
-            }
-
-            // ไม่ใช้ createApp เพราะไม่มี Vue component จริง ๆ
-            // script อยู่ท้าย body → DOM พร้อมแล้ว เรียกตรงได้เลย
-            injectAd('#ad-top',    'homepage-hero',  'Ad Top')
-            injectAd('#ad-inline', 'article-inline', 'Ad Inline')
-            injectAd('#ad-bento',  'homepage-bento', 'Ad Bento')
+            mountAd('ad-top',    'homepage-hero',  'Ad Top')
+            mountAd('ad-inline', 'article-inline', 'Ad Inline')
+            mountAd('ad-bento',  'homepage-bento', 'Ad Bento')
         </script>
     </body>
 </html>

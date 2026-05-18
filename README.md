@@ -3,6 +3,8 @@
 CDN Widget สำหรับ inject Ads / Content ลงในเว็บไซต์ รองรับ Plain HTML, Vue 2, และ Vue 3
 (ทั้ง CDN และ ES Module)
 
+รองรับ ad type: **Banner**, **Inline**, **Bento Grid**
+
 ---
 
 ## Requirements
@@ -64,13 +66,14 @@ cp playground/env.example.js playground/env.js
 
 ### 2. Mock backend ด้วย Beeceptor (หรือ tool ที่ใช้ได้)
 
-สร้าง mock rules 3 ตัว — ดู mock data ตัวอย่างใน [Mock Data](#mock-data) ด้านล่าง
+สร้าง mock rules ต่อไปนี้ — ดู mock data ตัวอย่างใน [Mock Data](#mock-data) ด้านล่าง
 
-| Method | Path                                  | Status |
-| ------ | ------------------------------------- | ------ |
-| GET    | `/ads/v1/zones/homepage-hero/config`  | 200    |
-| GET    | `/ads/v1/zones/article-inline/config` | 200    |
-| POST   | `/ads/v1/events`                      | 204    |
+| Method | Path                                    | Status |
+| ------ | --------------------------------------- | ------ |
+| GET    | `/ads/v1/zones/homepage-hero/config`    | 200    |
+| GET    | `/ads/v1/zones/article-inline/config`   | 200    |
+| GET    | `/ads/v1/zones/homepage-bento/config`   | 200    |
+| POST   | `/ads/v1/events`                        | 204    |
 
 แล้วเอา URL ของ mock service ใส่ใน `playground/env.js` → `baseUrl`
 
@@ -92,7 +95,13 @@ Server รันที่ **http://localhost:4000**
 | http://localhost:4000/playground/vue3-cdn.html    | Vue 3 CDN         |
 | http://localhost:4000/playground/vue3-module.html | Vue 3 ES Module   |
 
-ทุกหน้ามี 2 ad zone: `homepage-hero` (top banner) + `article-inline` (กลางเนื้อหา)
+ทุกหน้ามี 3 ad zone:
+
+| Zone ID           | ตำแหน่ง        | Ad Type     |
+| ----------------- | -------------- | ----------- |
+| `homepage-hero`   | Top banner     | Banner      |
+| `article-inline`  | กลางเนื้อหา   | Inline      |
+| `homepage-bento`  | Bento grid     | Bento Grid  |
 
 ---
 
@@ -107,87 +116,173 @@ Server รันที่ **http://localhost:4000**
 | `zoneId`   | `string`          | ✓      | Ads zone identifier (e.g. `'homepage-hero'`)                   |
 | `onEvent`  | `(event) => void` | –      | callback ทุก event (impression, view, click, close, hover ฯลฯ) |
 
+### Error Handling via `onEvent`
+
+Widget จัดการ fetch เอง — host project react ผ่าน `onEvent` callback:
+
+```js
+AdsInjector.inject(targetEl, {
+    // ...
+    onEvent(e) {
+        if (e.type === 'impression') {
+            // ad render สำเร็จ → ซ่อน fallback
+            fallbackEl.remove()
+        }
+        if (e.type === 'error') {
+            // fetch / render ล้มเหลว → คง fallback ไว้
+            // ถ้าไม่มี fallback ให้ซ่อน zone ทั้งหมด
+            if (!hasFallback) container.style.display = 'none'
+        }
+    },
+})
+```
+
+> **ไม่ต้อง** pre-fetch `/config` เองก่อนเรียก `inject` — widget ทำให้ทั้งหมด
+
 ### Plain HTML
 
 ```html
 <link rel="stylesheet" href="https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.css" />
 
-<div id="ads-mount"></div>
+<div id="ad-top">
+    <!-- fallback แสดงระหว่างรอ / เมื่อ error -->
+    <div data-fallback>
+        <div class="com7-ads-banner">
+            <a href="/promo" target="_blank"><img src="/fallback.jpg" alt="Ad" /></a>
+            <button class="com7-ads-banner__close">×</button>
+        </div>
+    </div>
+    <!-- inject target — widget เขียน ad ลงที่นี่ -->
+    <div data-target></div>
+</div>
 
 <script src="https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.js"></script>
 <script>
-    AdsInjector.inject('#ads-mount', {
+    const fallbackEl = document.querySelector('#ad-top [data-fallback]')
+    const targetEl   = document.querySelector('#ad-top [data-target]')
+
+    AdsInjector.inject(targetEl, {
         baseUrl: 'https://api.com7.in',
         clientId: 'shop-001',
         zoneId: 'homepage-hero',
-        onEvent: (e) => console.log('[Ad Event]', e),
+        onEvent(e) {
+            if (e.type === 'impression') fallbackEl?.remove()
+            if (e.type === 'error' && !fallbackEl?.children.length) {
+                document.getElementById('ad-top').style.display = 'none'
+            }
+        },
+    })
+
+    // ปุ่มปิด fallback
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.com7-ads-banner__close')) {
+            e.target.closest('[data-fallback]')?.remove()
+        }
     })
 </script>
 ```
 
 ### Vue 2 (CDN)
 
+Playground มี 3 component พร้อมใช้:
+
+| Component              | CSS wrapper         | มีปุ่มปิด |
+| ---------------------- | ------------------- | --------- |
+| `ads-banner-injector`  | `.com7-ads-banner`  | ✓         |
+| `ads-inline-injector`  | `.com7-ads-inline`  | –         |
+| `ads-bento-injector`   | `.ad-bento-grid`    | –         |
+
 ```html
 <div id="app">
-    <ads-injector zone-id="homepage-hero" client-id="shop-001"></ads-injector>
+    <ads-banner-injector
+        zone-id="homepage-hero"
+        :client-id="clientId"
+        fallback-image="/fallback-banner.jpg"
+        fallback-link="/promo"
+    ></ads-banner-injector>
+
+    <ads-inline-injector
+        zone-id="article-inline"
+        :client-id="clientId"
+        fallback-image="/fallback-inline.jpg"
+        fallback-link="/promo"
+    ></ads-inline-injector>
+
+    <ads-bento-injector
+        zone-id="homepage-bento"
+        :client-id="clientId"
+        :columns="3"
+        gap="12px"
+        :fallback-items="bentoDemoItems"
+    ></ads-bento-injector>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 <script src="https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.js"></script>
-<script>
-    Vue.component('ads-injector', {
-        props: ['zoneId', 'clientId'],
-        template: '<div ref="ads"></div>',
-        mounted() {
-            const A = AdsInjector?.default || AdsInjector
-            A.inject(this.$refs.ads, {
-                baseUrl: 'https://api.com7.in',
-                clientId: this.clientId,
-                zoneId: this.zoneId,
-                onEvent: (e) => console.log('[Ad]', e),
-            })
-        },
-    })
-    new Vue({ el: '#app' })
-</script>
 ```
+
+> ดู implementation เต็มของ component ทั้ง 3 ได้ใน `playground/vue2-cdn.html`
+
+**Error handling ใน Vue component:**
+- `impression` → `showFallback = false` (ซ่อน fallback, แสดง ad)
+- `error` + มี `fallbackImage` → `showFallback` ยังเป็น `true` (fallback อยู่)
+- `error` + ไม่มี `fallbackImage` → `this.$el.style.display = 'none'` (ซ่อน component ทั้งหมด)
 
 ### Vue 3 (CDN)
 
 ```html
-<div id="app">
-    <div id="ads-mount"></div>
+<div id="ad-top">
+    <div data-fallback>...</div>
+    <div data-target></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
 <script src="https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.js"></script>
 <script>
-    const { createApp } = Vue
-    createApp({
-        mounted() {
-            const A = AdsInjector?.default || AdsInjector
-            A.inject('#ads-mount', {
-                baseUrl: 'https://api.com7.in',
-                clientId: 'shop-001',
-                zoneId: 'homepage-hero',
-            })
-        },
-    }).mount('#app')
+    const A = AdsInjector?.default || AdsInjector
+
+    function mountAd(containerId, zoneId, label) {
+        const container  = document.getElementById(containerId)
+        const fallbackEl = container.querySelector('[data-fallback]')
+        const targetEl   = container.querySelector('[data-target]')
+
+        A.inject(targetEl, {
+            baseUrl: 'https://api.com7.in',
+            clientId: 'shop-001',
+            zoneId,
+            onEvent(e) {
+                if (e.type === 'impression') fallbackEl?.remove()
+                if (e.type === 'error' && !fallbackEl?.children.length) {
+                    container.closest('.ad-zone').style.display = 'none'
+                }
+                console.log('[' + label + ']', e)
+            },
+        })
+    }
+
+    mountAd('ad-top', 'homepage-hero', 'Ad Top')
 </script>
 ```
 
+> ไม่ต้องใช้ `createApp` — widget inject ผ่าน vanilla DOM, Vue ไม่ได้ถูกใช้งานจริงในกรณีนี้
+
 ### Vue 3 (ES Module)
 
+> ⚠️ dist เป็น **IIFE** ไม่ใช่ ESM — `import AdsInjector from '...'` จะ error
+> ให้โหลดผ่าน `<script src>` แล้วอ่าน `window.AdsInjector` ใน module แทน
+
 ```html
-<div id="ads-mount"></div>
+<!-- โหลด IIFE ก่อน module script -->
+<script src="https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.js"></script>
 
 <script type="module">
-    import AdsInjector from 'https://cdn.com7.in/ads-widget/com7-ads-inject-widget-v1.0.0.js'
+    const AdsInjector = window.AdsInjector?.default || window.AdsInjector
 
-    AdsInjector.inject('#ads-mount', {
+    AdsInjector.inject(document.querySelector('#ad-top [data-target]'), {
         baseUrl: 'https://api.com7.in',
         clientId: 'shop-001',
         zoneId: 'homepage-hero',
+        onEvent: (e) => console.log('[Ad]', e),
     })
 </script>
 ```
@@ -327,6 +422,56 @@ interface IAdsEvent {
     ]
 }
 ```
+
+### `GET /ads/v1/zones/homepage-bento/config`
+
+Response เป็น array ของ `BentoItem`:
+
+```json
+{
+    "items": [
+        {
+            "id": "bento-hero-001",
+            "type": "hero",
+            "title": "Summer Sale 2026",
+            "description": "ลดสูงสุด 50% สินค้า IT ทุกหมวด",
+            "image_url": "https://placehold.co/960x300/1a1a2e/ffffff?text=HERO",
+            "cta_label": "ช้อปเลย",
+            "cta_url": "https://example.com/summer-sale",
+            "tags": ["hot", "sale"]
+        },
+        {
+            "id": "bento-wide-001",
+            "type": "wide",
+            "title": "MacBook Pro M4",
+            "description": "ผ่อน 0% นาน 10 เดือน",
+            "image_url": "https://placehold.co/640x140/0d1117/ffffff?text=WIDE",
+            "cta_label": "ดูโปรโมชัน",
+            "cta_url": "https://example.com/macbook",
+            "tags": ["new"]
+        },
+        {
+            "id": "bento-small-001",
+            "type": "small",
+            "title": "AirPods Pro",
+            "description": null,
+            "image_url": "https://placehold.co/320x140/1a0a2e/ffffff?text=SMALL",
+            "cta_label": "ดูสินค้า",
+            "cta_url": "https://example.com/airpods",
+            "tags": ["promo"]
+        }
+    ]
+}
+```
+
+**BentoItem types และ grid span:**
+
+| type    | grid-column | grid-row | ใช้เมื่อ              |
+| ------- | ----------- | -------- | --------------------- |
+| `hero`  | span 3      | –        | featured / main story |
+| `wide`  | span 2      | –        | secondary feature     |
+| `tall`  | –           | span 2   | portrait product      |
+| `small` | span 1      | –        | product card          |
 
 ### `POST /ads/v1/events`
 
